@@ -1,5 +1,7 @@
 # Dernier Convoi
 
+> Ce dépôt contient aussi **Terres Brûlées**, un MOBA en 3 contre 3 dans le même univers : voir le dossier [`moba/`](moba/README.md).
+
 Jeu de stratégie en temps réel dans les Terres désolées, jouable dans le navigateur.
 HTML5 Canvas et JavaScript pur : aucune dépendance, aucun outil de build.
 
