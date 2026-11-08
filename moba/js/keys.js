@@ -12,8 +12,10 @@ const KEY_ACTIONS = [
   { group: 'Actions', id: 'scoreboard', label: 'Tableau des scores (maintenir)', azerty: 'Tab', qwerty: 'Tab' },
   { group: 'Caméra', id: 'camLock', label: 'Verrouiller / libérer la caméra', azerty: 'y', qwerty: 'y' },
   { group: 'Caméra', id: 'camCenter', label: 'Centrer sur le héros (maintenir)', azerty: ' ', qwerty: ' ' },
+  { group: 'Caméra', id: 'showRange', label: 'Afficher la portée d’attaque (maintenir)', azerty: 'c', qwerty: 'c' },
 ];
 const FIXED_CONTROLS = [
+  ['Utiliser un objet', 'Touches 1 à 6 (potions)'],
   ['Se déplacer', 'Clic droit sur le sol (maintenir pour suivre la souris)'],
   ['Attaquer', 'Clic droit sur un ennemi'],
   ['Lancer une compétence', 'Maintenir sa touche pour viser, relâcher pour lancer. Clic droit pendant la visée : annuler'],

@@ -9,95 +9,90 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <canvas id="gameCanvas"></canvas>
+  <canvas id="overlay"></canvas>
 
-  <!-- ============ HUD ============ -->
+  <!-- ================= HUD ================= -->
   <div id="hud" class="hidden">
-    <div id="topBar">
-      <div class="score blue"><span class="tag">Convoyeurs</span><span id="killsBlue">0</span></div>
-      <div class="clockBox"><div id="clock">00:00</div><div id="towersInfo"></div></div>
-      <div class="score red"><span id="killsRed">0</span><span class="tag">Charognards</span></div>
+    <div id="topRight">
+      <div id="scoreBox" class="plate">
+        <div class="teams"><span class="b" id="killsBlue">0</span><span class="vs">⚔</span><span class="r" id="killsRed">0</span></div>
+        <div class="me"><span data-tip="<b>Éliminations / Morts / Assistances</b>"><i class="ico k"></i><b id="kda">0 / 0 / 0</b></span><span data-tip="<b>Sbires et monstres achevés</b>"><i class="ico cs"></i><b id="cs">0</b></span><span><i class="ico clk"></i><b id="clock">00:00</b></span></div>
+      </div>
+      <div id="feed"></div>
     </div>
-    <div id="myStats"></div>
+    <div id="objectives"></div>
     <div id="allyFrames"></div>
-    <div id="feed"></div>
     <div id="announce"></div>
     <div id="toasts"></div>
-    <div id="deathBanner" class="hidden"><div class="t">Vous êtes à terre</div><div class="s">Retour au combat dans <b id="respawnIn">0</b> s · la boutique reste ouverte</div></div>
-    <div id="recallBar" class="hidden"><div class="lbl">Retour à la base</div><div class="bar"><div id="recallFill"></div></div></div>
+    <div id="deathBanner" class="hidden"><div class="t">À terre</div><div class="s">Retour au combat dans <b id="respawnIn">0</b> s — la boutique reste ouverte</div></div>
+    <div id="recallBar" class="hidden"><span>Retour à la base</span><div class="bar"><div id="recallFill"></div></div></div>
 
-    <div id="bottomHud">
-      <div id="statsCol"></div>
-      <div id="heroBox"><div id="xpRing"><canvas id="heroPortrait" width="120" height="120"></canvas></div><div id="lvlBadge">1</div></div>
-      <div id="centerCol">
-        <div id="abilityRow"></div>
-        <div class="bars">
+    <div id="hudMain">
+      <div id="statPanel"></div>
+      <div id="portraitBox"><div id="buffRow"></div><div id="xpRing"><canvas id="heroPortrait" width="128" height="128"></canvas></div><div id="lvlBadge">1</div></div>
+      <div id="centerBox">
+        <div class="abRow"><div id="abilityRow"></div><div id="spellBox"></div></div>
+        <div id="barsBox">
           <div class="hpbar"><div id="hpFill"></div><div id="shieldFill"></div><span id="hpText"></span></div>
-          <div class="manabar"><div id="manaFill"></div><span id="manaText"></span></div>
+          <div class="mpbar"><div id="manaFill"></div><span id="manaText"></span></div>
         </div>
       </div>
-      <div id="invCol">
+      <div id="invBox">
         <div id="items"></div>
-        <div id="goldRow"><span class="coin"></span><span id="gold">0</span><button id="btnShop" data-tip="<b>Boutique</b><br>Achat possible à la base ou à terre.">Boutique</button><button id="btnRecall" data-tip="<b>Retour à la base</b><br>6 s, interrompu par les dégâts.">Base</button></div>
+        <div id="goldRow"><span class="coin"></span><b id="gold">0</b><button id="btnShop">Boutique</button><button id="btnRecall" class="icon"></button></div>
       </div>
     </div>
-    <div id="mapFrame"><canvas id="minimap" width="300" height="108"></canvas></div>
-
-    <div id="shop" class="hidden">
-      <div class="shopHead"><span class="ttl">Boutique de Gros‑Louis</span><span id="shopStatus"></span><span class="gold"><span class="coin"></span><b id="shopGold">0</b></span><button id="shopClose">✕</button></div>
-      <div class="shopBody">
-        <div class="shopLeft">
-          <div class="shopSection">Recommandés pour <span id="shopHero"></span></div><div id="shopRec" class="shopGrid"></div>
-          <div class="shopSection">Pièces détachées</div><div id="shopT1" class="shopGrid"></div>
-          <div class="shopSection">Équipement lourd</div><div id="shopT2" class="shopGrid"></div>
-        </div>
-        <div class="shopRight" id="shopDetail"></div>
-      </div>
-    </div>
+    <div id="mapBox"><canvas id="minimap" width="232" height="232"></canvas></div>
+    <div id="shop" class="hidden"></div>
     <div id="scoreboard" class="hidden"></div>
   </div>
   <div id="tooltip" class="hidden"></div>
 
-  <!-- ============ ÉCRANS ============ -->
+  <!-- ================= ÉCRANS ================= -->
   <div id="screens">
     <div id="screenMain" class="screen">
+      <div class="mainShade"></div>
       <div class="brand">
-        <div class="kicker">Arène · 3 contre 3</div>
+        <div class="kicker">Arène · 5 contre 5 · trois voies</div>
         <div class="brandTitle">Terres<br>Brûlées</div>
         <div class="rule"></div>
         <div class="brandSub">Un MOBA dans les ruines de l’ancien monde</div>
       </div>
       <nav class="mainNav">
-        <a data-go="select">Jouer</a>
-        <a data-go="howto">Comment jouer</a>
-        <a data-go="options">Options</a>
+        <a data-go="select"><span>Jouer</span><small>Partie contre l’IA</small></a>
+        <a data-go="howto"><span>Comment jouer</span><small>Voies, jungle, objets</small></a>
+        <a data-go="options"><span>Options</span><small>Son, caméra, touches</small></a>
       </nav>
-      <canvas id="lineup" width="900" height="560"></canvas>
-      <div class="footer">Saison 1 · La Route 66 effondrée</div>
+      <div class="footer">Saison 1 · L’échangeur effondré</div>
     </div>
 
     <div id="screenSelect" class="screen hidden">
+      <div class="selShade"></div>
       <div class="selHead"><div class="kicker">Préparation</div><div class="selTitle">Choisissez votre héros</div></div>
-      <div id="heroCards"></div>
-      <div id="heroDetail"></div>
+      <div id="heroGrid"></div>
+      <div id="stage"></div>
+      <div id="heroInfo"></div>
       <div class="selFoot">
         <a class="btn ghost" data-go="main">Retour</a>
-        <div class="diffBox"><span class="lbl">Bots</span><div class="seg" id="diffSeg"></div><span id="diffBrief"></span></div>
+        <div class="pickBox"><span class="lbl">Poste</span><div id="rolePick"></div><span id="roleHint"></span></div>
+        <div class="pickBox"><span class="lbl">Bots</span><div class="seg" id="diffSeg"></div><span id="diffBrief"></span></div>
         <a class="btn primary" id="btnFight">Entrer dans l’arène</a>
       </div>
     </div>
 
     <div id="screenVersus" class="screen hidden"><div id="versus"></div></div>
 
-    <div id="screenHowto" class="screen hidden">
-      <div class="panel wide"><div class="panelTitle">Comment jouer</div><div id="howtoBody"></div><div class="actions"><a class="btn ghost" data-go="back">Retour</a></div></div>
+    <div id="screenHowto" class="screen hidden dim">
+      <div class="panel xwide"><div class="panelTitle">Comment jouer</div><div id="howtoBody"></div><div class="actions"><a class="btn ghost" data-go="back">Retour</a></div></div>
     </div>
 
-    <div id="screenOptions" class="screen hidden">
+    <div id="screenOptions" class="screen hidden dim">
       <div class="panel wide">
         <div class="panelTitle">Options</div>
         <div class="setting"><span class="lbl">Volume général</span><input type="range" id="optVolume" min="0" max="100"></div>
         <div class="setting"><span class="lbl">Ambiance et percussions</span><div class="seg" data-opt="music"><a data-v="1">Activées</a><a data-v="0">Coupées</a></div></div>
+        <div class="setting"><span class="lbl">Ombres</span><div class="seg" data-opt="shadows"><a data-v="1">Activées</a><a data-v="0">Désactivées</a></div></div>
         <div class="setting"><span class="lbl">Caméra au début de la partie</span><div class="seg" data-opt="cameraLocked"><a data-v="1">Verrouillée</a><a data-v="0">Libre</a></div></div>
         <div class="setting"><span class="lbl">Défilement par les bords (caméra libre)</span><div class="seg" data-opt="edgeScroll"><a data-v="1">Activé</a><a data-v="0">Désactivé</a></div></div>
         <div class="setting"><span class="lbl">Chiffres de dégâts</span><div class="seg" data-opt="damageNumbers"><a data-v="1">Affichés</a><a data-v="0">Masqués</a></div></div>
@@ -109,28 +104,31 @@
 
     <div id="screenPause" class="screen hidden dim">
       <div class="panel narrow"><div class="panelTitle">Pause</div>
-        <nav class="mainNav small"><a id="btnResume">Reprendre</a><a data-go="howto">Comment jouer</a><a data-go="options">Options</a><a id="btnQuit">Abandonner la partie</a></nav>
+        <nav class="mainNav small"><a id="btnResume"><span>Reprendre</span></a><a data-go="howto"><span>Comment jouer</span></a><a data-go="options"><span>Options</span></a><a id="btnQuit"><span>Abandonner</span></a></nav>
       </div>
     </div>
 
     <div id="screenEnd" class="screen hidden dim">
-      <div class="panel wide"><div class="panelTitle big" id="endTitle">Victoire</div><p id="endText"></p><div id="endStats"></div>
+      <div class="panel xwide"><div class="panelTitle big" id="endTitle">Victoire</div><p id="endText"></p><div id="endStats"></div>
         <div class="actions"><a class="btn ghost" data-go="main">Menu principal</a><a class="btn primary" id="btnReplay">Rejouer</a></div>
       </div>
     </div>
   </div>
 
+  <script src="vendor/three.min.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/data.js"></script>
   <script src="js/map.js"></script>
   <script src="js/entities.js"></script>
   <script src="js/abilities.js"></script>
   <script src="js/keys.js"></script>
-  <script src="js/art.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/studio.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/game.js"></script>
-  <script src="js/render.js"></script>
+  <script src="js/render3d.js"></script>
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/menu.js"></script>

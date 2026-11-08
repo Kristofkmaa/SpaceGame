@@ -1,73 +1,71 @@
-// ============ HUD en partie ============
+// ============ HUD : barre principale, boutique à recettes, tableau des scores ============
+const ROLE_GLYPH = { top: '▲', jungle: '✦', mid: '◆', adc: '➶', support: '✚' };
 class UI {
   constructor(app) {
     this.app = app; this.el = {};
-    for (const id of ['hud', 'killsBlue', 'killsRed', 'clock', 'towersInfo', 'myStats', 'allyFrames', 'feed', 'announce', 'toasts', 'deathBanner', 'respawnIn', 'recallBar', 'recallFill',
-      'statsCol', 'xpRing', 'heroPortrait', 'lvlBadge', 'abilityRow', 'hpFill', 'shieldFill', 'hpText', 'manaFill', 'manaText', 'items', 'gold', 'btnShop', 'btnRecall',
-      'shop', 'shopStatus', 'shopGold', 'shopClose', 'shopHero', 'shopRec', 'shopT1', 'shopT2', 'shopDetail', 'scoreboard', 'tooltip']) this.el[id] = document.getElementById(id);
-    this.slow = 0; this.selItem = null; this.portraits = {};
+    for (const id of ['hud', 'killsBlue', 'killsRed', 'kda', 'cs', 'clock', 'feed', 'objectives', 'allyFrames', 'announce', 'toasts', 'deathBanner', 'respawnIn', 'deathBy',
+      'statPanel', 'xpRing', 'heroPortrait', 'lvlBadge', 'buffRow', 'abilityRow', 'hpFill', 'shieldFill', 'hpText', 'manaFill', 'manaText', 'spellBox', 'items', 'gold', 'btnShop', 'btnRecall', 'shop', 'scoreboard', 'tooltip', 'recallBar', 'recallFill', 'gameCanvas']) this.el[id] = document.getElementById(id);
+    this.slow = 0; this.shopCat = 'rec'; this.selItem = null;
     this.el.btnShop.addEventListener('click', () => this.toggleShop());
     this.el.btnRecall.addEventListener('click', () => this.game && this.game.startRecall(this.game.player));
-    this.el.shopClose.addEventListener('click', () => this.toggleShop(false));
     document.addEventListener('mouseover', e => { const b = e.target.closest('[data-tip]'); if (b) { this.el.tooltip.innerHTML = typeof b._tip === 'function' ? b._tip() : b.dataset.tip; this.el.tooltip.classList.remove('hidden'); } else this.el.tooltip.classList.add('hidden'); });
-    document.addEventListener('mousemove', e => { const t = this.el.tooltip; if (t.classList.contains('hidden')) return; t.style.left = Math.min(e.clientX + 16, innerWidth - t.offsetWidth - 8) + 'px'; t.style.top = Math.max(8, e.clientY - t.offsetHeight - 14) + 'px'; });
+    document.addEventListener('mousemove', e => { const t = this.el.tooltip; if (t.classList.contains('hidden')) return; t.style.left = Math.min(e.clientX + 18, innerWidth - t.offsetWidth - 10) + 'px'; t.style.top = Math.max(10, e.clientY - t.offsetHeight - 16) + 'px'; });
   }
   get game() { return this.app.game; }
+  get studio() { return this.app.studio; }
   keyLabel(id) { return this.app.keys.label(id); }
-  portraitCanvas(id, size, team) {
-    const key = id + size + team;
-    if (!this.portraits[key]) { const c = document.createElement('canvas'); c.width = c.height = size; Art.portrait(c.getContext('2d'), id, size, size, { team }); this.portraits[key] = c; }
-    const c = document.createElement('canvas'); c.width = c.height = size; c.getContext('2d').drawImage(this.portraits[key], 0, 0); return c;
-  }
-  iconCanvas(id, size, kind, hero) { const c = document.createElement('canvas'); c.width = c.height = size; Art.icon(c.getContext('2d'), id, size, kind, hero); return c; }
+  portrait(id, size, team = 0) { const src = this.studio.portrait(id, 128, team), c = document.createElement('canvas'); c.width = c.height = size; c.getContext('2d').drawImage(src, 0, 0, size, size); return c; }
 
   setGame() {
     const g = this.game, h = g.player;
     this.el.hud.classList.remove('hidden');
     for (const k of ['feed', 'announce', 'toasts']) this.el[k].innerHTML = '';
-    Art.portrait(this.el.heroPortrait.getContext('2d'), h.heroId, 120, 120, { team: 0 });
-    this.el.shopHero.textContent = h.def.name;
-    this.buildAbilities(); this.buildAllyFrames(); this.buildShop(); this.toggleShop(false); this.showScore(false);
+    const pc = this.el.heroPortrait.getContext('2d'); pc.clearRect(0, 0, 128, 128); pc.drawImage(this.studio.portrait(h.heroId, 128, 0), 0, 0);
+    this.portraits = {}; for (const id in HEROES) this.portraits[id] = this.studio.portrait(id, 128, 0);
+    this.buildAbilities(); this.buildAllyFrames(); this.buildObjectives(); this.toggleShop(false); this.showScore(false);
+    this.el.btnRecall.innerHTML = ''; this.el.btnRecall.appendChild(Icons.get('recall', 30, 'spell')); this.el.btnRecall.dataset.tip = `<b>Retour à la base</b> <span class="k">[${this.keyLabel('recall')}]</span><br>6 s, interrompu par les dégâts.`;
+    this.el.btnShop.dataset.tip = `<b>Boutique</b> <span class="k">[${this.keyLabel('shop')}]</span><br>Achats à la base ou à terre.`;
     this.update(0, true);
   }
-  hide() { this.el.hud.classList.add('hidden'); this.toggleShop(false); }
+  hide() { this.el.hud.classList.add('hidden'); this.toggleShop(false); this.el.gameCanvas.style.filter = ''; }
 
-  // ---------- Barre de compétences ----------
+  // ---------- Compétences ----------
   abilityTip(slot) {
-    const h = this.game.player, ab = ABILITIES[h.def.abilities[slot]], r = h.ranks[slot];
-    const cur = Math.max(1, r);
-    return `<b>${ab.name}</b> <span class="k">[${this.keyLabel('ab' + slot)}]</span>${ab.ult ? ' · Ultime' : ''}<br><span class="m">${ab.cost[cur - 1]} énergie</span> · délai ${ab.cd[cur - 1]} s · rang ${r}/${ab.cost.length}<br>${ab.desc()}` +
-      (r === 0 ? `<br><span class="g">Ctrl + ${this.keyLabel('ab' + slot)} pour apprendre${ab.ult ? ' (niveau 6)' : ''}.</span>` : '');
+    const h = this.game.player, ab = ABILITIES[h.def.abilities[slot]], r = h.ranks[slot], cur = Math.max(1, r);
+    return `<b>${ab.name}</b> <span class="k">[${this.keyLabel('ab' + slot)}]</span>${ab.ult ? ' <span class="u">Ultime</span>' : ''}<br><span class="m">${ab.cost[cur - 1]} énergie</span> · <span class="c">${ab.cd[cur - 1]} s</span> · rang ${r}/${ab.cost.length}<div class="d">${ab.desc()}</div>` + (r === 0 ? `<span class="g">Ctrl + ${this.keyLabel('ab' + slot)} pour l’apprendre${ab.ult ? ' (niveau 6)' : ''}</span>` : '');
   }
   buildAbilities() {
-    const g = this.game, h = g.player, row = this.el.abilityRow;
-    row.innerHTML = ''; this.abEls = [];
+    const g = this.game, h = g.player, row = this.el.abilityRow; row.innerHTML = ''; this.abEls = [];
     h.def.abilities.forEach((id, slot) => {
-      const d = document.createElement('div'); d.className = 'ab';
-      d.appendChild(this.iconCanvas(id, 54, 'ability', h.heroId));
-      d.insertAdjacentHTML('beforeend', `<div class="cd"></div><div class="cdT"></div><span class="key">${this.keyLabel('ab' + slot)}</span><span class="cost"></span><div class="pips">${'<i></i>'.repeat(ABILITIES[id].cost.length)}</div><button class="up hidden">+</button>`);
+      const d = document.createElement('div'); d.className = 'ab' + (slot === 3 ? ' ult' : '');
+      d.appendChild(Icons.get(id, 120, 'ability', h.heroId));
+      d.insertAdjacentHTML('beforeend', `<div class="cd"></div><div class="cdT"></div><span class="key">${this.keyLabel('ab' + slot)}</span><span class="cost"></span><div class="pips">${'<i></i>'.repeat(ABILITIES[id].cost.length)}</div><button class="up hidden" tabindex="-1">+</button>`);
       d.dataset.tip = '1'; d._tip = () => this.abilityTip(slot);
-      d.querySelector('.up').addEventListener('click', ev => { ev.stopPropagation(); g.levelUp(h, slot); });
-      d.addEventListener('mousedown', ev => { if (ev.button === 0 && ev.ctrlKey) g.levelUp(h, slot); });
+      d.querySelector('.up').addEventListener('mousedown', ev => { ev.stopPropagation(); g.levelUp(h, slot); });
       row.appendChild(d); this.abEls.push(d);
     });
-    const sep = document.createElement('div'); sep.className = 'sep'; row.appendChild(sep);
+    const sb = this.el.spellBox; sb.innerHTML = '';
     h.spells.forEach((id, i) => {
-      const d = document.createElement('div'); d.className = 'ab small';
-      d.appendChild(this.iconCanvas(id, 42, 'spell'));
+      const d = document.createElement('div'); d.className = 'ab sp';
+      d.appendChild(Icons.get(id, 96, 'spell'));
       d.insertAdjacentHTML('beforeend', `<div class="cd"></div><div class="cdT"></div><span class="key">${this.keyLabel('sp' + i)}</span>`);
-      d.dataset.tip = '1'; d._tip = () => `<b>${SPELLS[id].name}</b> <span class="k">[${this.keyLabel('sp' + i)}]</span> · délai ${SPELLS[id].cd} s<br>${SPELLS[id].desc}`;
-      row.appendChild(d); this.abEls.push(d);
+      d.dataset.tip = '1'; d._tip = () => `<b>${SPELLS[id].name}</b> <span class="k">[${this.keyLabel('sp' + i)}]</span> · <span class="c">${SPELLS[id].cd} s</span><div class="d">${SPELLS[id].desc}</div>`;
+      sb.appendChild(d); this.abEls.push(d);
     });
   }
   buildAllyFrames() {
     const g = this.game, box = this.el.allyFrames; box.innerHTML = ''; this.allyEls = [];
-    for (const h of g.heroes.filter(x => x.team === 0 && !x.isPlayer)) {
+    for (const a of g.heroes.filter(x => x.team === 0 && !x.isPlayer)) {
       const d = document.createElement('div'); d.className = 'af';
-      d.appendChild(this.portraitCanvas(h.heroId, 80, 0));
-      d.insertAdjacentHTML('beforeend', `<div class="info"><div class="nm">${h.name}<span></span></div><div class="b"><div></div></div></div><div class="rs"></div>`);
-      box.appendChild(d); this.allyEls.push({ h, d });
+      const pw = document.createElement('div'); pw.className = 'pw'; pw.appendChild(this.portrait(a.heroId, 46)); pw.insertAdjacentHTML('beforeend', '<span class="lv"></span><span class="rs"></span><i class="ult"></i>'); d.appendChild(pw);
+      d.insertAdjacentHTML('beforeend', `<div class="info"><div class="nm">${a.name}<span>${ROLE_GLYPH[a.role]} ${ROLES[a.role].label}</span></div><div class="b"><div class="hp"></div></div><div class="b m"><div class="mp"></div></div></div>`);
+      d.dataset.tip = '1'; d._tip = () => `<b>${a.name}</b> · ${ROLES[a.role].label}<br>Niveau ${a.level} · ${a.k}/${a.d}/${a.a} · ${a.cs} sbires`;
+      box.appendChild(d); this.allyEls.push({ a, d });
     }
+  }
+  buildObjectives() {
+    const box = this.el.objectives; box.innerHTML = '';
+    this.objEls = this.game.camps.filter(c => c.epic).map(c => { const d = document.createElement('div'); d.className = 'obj'; d.innerHTML = `<span class="ic ${c.id}"></span><span class="nm">${c.name}</span><b></b>`; box.appendChild(d); return { c, d }; });
   }
 
   // ---------- Mise à jour ----------
@@ -80,83 +78,71 @@ class UI {
     const sh = h.shieldAmt(t);
     this.el.shieldFill.style.left = (h.hp / h.maxHp * 100) + '%'; this.el.shieldFill.style.width = Math.min(100 - h.hp / h.maxHp * 100, sh / h.maxHp * 100) + '%';
     this.el.hpText.textContent = `${Math.ceil(h.hp)} / ${Math.round(h.maxHp)}`;
-    this.el.manaFill.style.width = (h.mana / h.maxMana * 100) + '%';
-    this.el.manaText.textContent = `${Math.floor(h.mana)} / ${Math.round(h.maxMana)}`;
+    this.el.manaFill.style.width = (h.mana / h.maxMana * 100) + '%'; this.el.manaText.textContent = `${Math.floor(h.mana)} / ${Math.round(h.maxMana)}`;
     this.el.gold.textContent = Math.floor(h.gold);
-    // Compétences et sorts
     h.def.abilities.forEach((id, slot) => {
-      const d = this.abEls[slot], ab = ABILITIES[id], r = h.ranks[slot];
-      const total = r ? ab.cd[r - 1] * (1 - h.st.cdr) : 1, cd = h.cds[slot];
-      d.classList.toggle('locked', r === 0);
-      d.classList.toggle('nomana', r > 0 && cd <= 0 && h.mana < ab.cost[r - 1]);
-      d.querySelector('.cd').style.background = cd > 0 ? `conic-gradient(transparent ${360 * (1 - cd / total)}deg, rgba(8,6,4,0.72) 0deg)` : 'none';
+      const d = this.abEls[slot], ab = ABILITIES[id], r = h.ranks[slot], total = r ? ab.cd[r - 1] * (1 - h.st.cdr) : 1, cd = h.cds[slot];
+      d.classList.toggle('locked', r === 0); d.classList.toggle('nomana', r > 0 && cd <= 0 && h.mana < ab.cost[r - 1]);
+      d.classList.toggle('ready', r > 0 && cd <= 0 && h.mana >= ab.cost[r - 1]);
+      d.classList.toggle('aiming', !!(this.app.input.aiming && this.app.input.aiming.slot === slot));
+      d.querySelector('.cd').style.background = cd > 0 ? `conic-gradient(transparent ${360 * (1 - cd / total)}deg, rgba(6,4,2,0.74) 0deg)` : 'none';
       d.querySelector('.cdT').textContent = cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
       d.querySelector('.cost').textContent = r ? ab.cost[r - 1] : '';
       d.querySelectorAll('.pips i').forEach((p, i) => p.classList.toggle('on', i < r));
-      d.querySelector('.up').classList.toggle('hidden', !h.canLevel(slot) || h.dead && false);
+      d.querySelector('.up').classList.toggle('hidden', !h.canLevel(slot));
     });
-    h.spells.forEach((id, i) => {
-      const d = this.abEls[4 + i], cd = h.spellCds[i];
-      d.querySelector('.cd').style.background = cd > 0 ? `conic-gradient(transparent ${360 * (1 - cd / SPELLS[id].cd)}deg, rgba(8,6,4,0.72) 0deg)` : 'none';
-      d.querySelector('.cdT').textContent = cd > 0 ? Math.ceil(cd) : '';
-    });
-    // Mort et retour
+    h.spells.forEach((id, i) => { const d = this.abEls[4 + i], cd = h.spellCds[i]; d.querySelector('.cd').style.background = cd > 0 ? `conic-gradient(transparent ${360 * (1 - cd / SPELLS[id].cd)}deg, rgba(6,4,2,0.74) 0deg)` : 'none'; d.querySelector('.cdT').textContent = cd > 0 ? Math.ceil(cd) : ''; });
     this.el.deathBanner.classList.toggle('hidden', !h.dead);
+    this.el.gameCanvas.style.filter = h.dead ? 'grayscale(0.9) brightness(0.75)' : '';
     if (h.dead) this.el.respawnIn.textContent = Math.ceil(h.respawnAt - t);
     this.el.recallBar.classList.toggle('hidden', !h.recall);
     if (h.recall) this.el.recallFill.style.width = ((t - h.recall.start) / CONFIG.RECALL_TIME * 100) + '%';
-    this.slow -= dt;
-    if (this.slow > 0 && !force) return;
-    this.slow = 0.25;
+    this.slow -= dt; if (this.slow > 0 && !force) return; this.slow = 0.25;
     this.el.lvlBadge.textContent = h.level;
     const xpk = h.level >= CONFIG.MAX_LEVEL ? 1 : h.xp / xpToNext(h.level);
-    this.el.xpRing.style.background = `conic-gradient(var(--gold) ${xpk * 360}deg, #3a2c1e 0deg)`;
+    this.el.xpRing.style.background = `conic-gradient(#9a6ae8 ${xpk * 360}deg, #241a2c 0deg)`;
     const st = h.st;
-    this.el.statsCol.innerHTML = [['Attaque', Math.round(st.ad)], ['Puissance', Math.round(st.ap)], ['Blindage', Math.round(st.armor)], ['Isolation', Math.round(st.resist)], ['Cadence', st.as.toFixed(2)], ['Vitesse', Math.round(st.ms * h.msMult(t))]].map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-    this.el.myStats.innerHTML = `<b>${h.k} / ${h.d} / ${h.a}</b>Sbires <b>${h.cs}</b>`;
-    const down = g.towersDown;
-    this.el.towersInfo.textContent = `Tourelles ${2 - down[0]} – ${2 - down[1]}`;
-    this.renderItems(this.el.items, h.items, true);
-    for (const { h: a, d } of this.allyEls) {
+    this.el.statPanel.innerHTML = [['atk', 'Attaque', Math.round(st.ad)], ['ap', 'Puissance', Math.round(st.ap)], ['arm', 'Blindage', Math.round(st.armor)], ['res', 'Isolation', Math.round(st.resist)], ['as', 'Cadence', st.as.toFixed(2)], ['cdr', 'Délais', Math.round(st.cdr * 100) + '%'], ['crit', 'Critique', Math.round(st.crit * 100) + '%'], ['ms', 'Vitesse', Math.round(st.ms * h.msMult(t))]].map(([c, k, v]) => `<div class="s ${c}" data-tip="<b>${k}</b>"><i></i><b>${v}</b></div>`).join('');
+    this.el.kda.textContent = `${h.k} / ${h.d} / ${h.a}`; this.el.cs.textContent = h.cs;
+    this.el.buffRow.innerHTML = h.buffs.filter(b => b.dur >= 3).map(b => `<div class="bf ${b.id}" data-tip="<b>${BUFFS[b.id] ? BUFFS[b.id].name : b.id}</b>${BUFFS[b.id] ? '<br>' + BUFFS[b.id].desc : ''}"><span>${Math.ceil(b.until - t)}</span></div>`).join('') + (g.dragons[0] ? `<div class="bf worm" data-tip="<b>Écailles du ver</b><br>+${g.dragons[0] * 6} % de dégâts"><span>×${g.dragons[0]}</span></div>` : '');
+    this.renderItems();
+    for (const { a, d } of this.allyEls) {
       d.classList.toggle('dead', a.dead);
-      d.querySelector('.nm span').textContent = 'Niv. ' + a.level;
-      d.querySelector('.b > div').style.width = (a.dead ? 0 : a.hp / a.maxHp * 100) + '%';
-      d.querySelector('.rs').textContent = a.dead ? Math.ceil(a.respawnAt - t) : '';
+      d.querySelector('.lv').textContent = a.level; d.querySelector('.rs').textContent = a.dead ? Math.ceil(a.respawnAt - t) : '';
+      d.querySelector('.hp').style.width = (a.dead ? 0 : a.hp / a.maxHp * 100) + '%'; d.querySelector('.mp').style.width = (a.dead ? 0 : a.mana / a.maxMana * 100) + '%';
+      d.querySelector('.ult').classList.toggle('on', a.ranks[3] > 0 && a.cds[3] <= 0);
     }
+    for (const { c, d } of this.objEls) { const alive = c.alive.length > 0; d.classList.toggle('alive', alive); d.querySelector('b').textContent = alive ? 'Présent' : Utils.formatTime(c.respawnAt - t); }
     if (this.shopOpen()) this.refreshShop();
     if (!this.el.scoreboard.classList.contains('hidden')) this.renderScore();
   }
-  renderItems(box, items, tips) {
-    const sig = items.join(',');
-    if (box._sig === sig) return;
-    box._sig = sig; box.innerHTML = '';
+  renderItems() {
+    const h = this.game.player, box = this.el.items, sig = h.items.map(s => s.id + (s.n || '')).join(',');
+    if (box._sig === sig) return; box._sig = sig; box.innerHTML = '';
     for (let i = 0; i < 6; i++) {
-      const s = document.createElement('div'); s.className = 'slot';
-      if (items[i]) { s.appendChild(this.iconCanvas(items[i], 38, 'item')); if (tips) { s.dataset.tip = '1'; s._tip = () => this.itemTip(items[i]); } }
+      const s = document.createElement('div'); s.className = 'slot'; const it = h.items[i];
+      s.insertAdjacentHTML('beforeend', `<span class="k">${i + 1}</span>`);
+      if (it) { s.appendChild(Icons.get(it.id, 80, 'item')); if (it.n) s.insertAdjacentHTML('beforeend', `<span class="n">${it.n}</span>`); s.dataset.tip = '1'; s._tip = () => this.itemTip(it.id); s.addEventListener('mousedown', e => { if (e.button === 0) this.game.useItem(h, i); }); }
       box.appendChild(s);
     }
   }
-  itemTip(id) { const it = ITEMS[id]; return `<b>${it.name}</b> <span class="k">${it.cost} or</span><br>` + Object.entries(it.stats).map(([k, v]) => `<span class="g">${STAT_LABELS[k][1](v)}</span> ${STAT_LABELS[k][0]}`).join('<br>'); }
+  itemTip(id) {
+    const it = ITEMS[id], g = this.game, price = g ? g.priceFor(g.player, id).price : it.cost;
+    return `<b>${it.name}</b> <span class="k">${it.consumable ? it.recipe : price} or</span>${!it.consumable && price !== it.cost ? ` <span class="dim">(${it.cost})</span>` : ''}<br>` + Object.entries(it.stats).map(([k, v]) => `<span class="g">${STAT_LABELS[k][1](v)}</span> ${STAT_LABELS[k][0]}`).join('<br>') + (it.passive ? `<div class="d">${it.passive}</div>` : '') + (it.desc ? `<div class="d">${it.desc}</div>` : '');
+  }
 
   // ---------- Messages ----------
-  toast(text, cls = '') {
-    const d = document.createElement('div'); d.className = 'toast ' + cls; d.textContent = text;
-    this.el.toasts.appendChild(d); while (this.el.toasts.children.length > 3) this.el.toasts.firstChild.remove();
-    setTimeout(() => d.remove(), 3000);
-  }
-  announce(title, sub, cls = 'info') {
-    this.el.announce.innerHTML = `<div class="a ${cls}"><div class="t">${title}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`;
-    this.app.audio.play(cls === 'bad' ? 'announceBad' : 'announceGood');
-  }
+  toast(text, cls = '') { for (const c of this.el.toasts.children) if (c.textContent === text) return; const d = document.createElement('div'); d.className = 'toast ' + cls; d.textContent = text; this.el.toasts.appendChild(d); while (this.el.toasts.children.length > 3) this.el.toasts.firstChild.remove(); setTimeout(() => d.remove(), 3000); }
+  announce(title, sub, cls = 'info') { this.el.announce.innerHTML = `<div class="a ${cls}"><div class="orn"></div><div class="t">${title}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`; this.app.audio.play(cls === 'bad' ? 'announceBad' : 'announceGood'); }
   feed(killer, victim, assists) {
     const d = document.createElement('div'); d.className = 'kill';
-    const pc = (h) => { const c = this.portraitCanvas(h.heroId, 60, h.team); c.className = h.team === 0 ? 'k-blue' : 'k-red'; return c; };
+    const pc = h => { const w = document.createElement('span'); w.className = 'pk ' + (h.team === 0 ? 'b' : 'r'); w.appendChild(this.portrait(h.heroId, 34, h.team)); return w; };
     if (killer) d.appendChild(pc(killer)); else d.insertAdjacentHTML('beforeend', '<span class="txt">Exécuté</span>');
-    d.insertAdjacentHTML('beforeend', `<span class="arrow">▶</span>`);
+    d.insertAdjacentHTML('beforeend', `<span class="sw ${killer && killer.team === 0 ? 'b' : 'r'}"></span>`);
     d.appendChild(pc(victim));
     if (assists && assists.length) d.insertAdjacentHTML('beforeend', `<span class="txt">+${assists.length}</span>`);
     this.el.feed.appendChild(d); while (this.el.feed.children.length > 5) this.el.feed.firstChild.remove();
-    setTimeout(() => d.remove(), 8000);
+    setTimeout(() => d.remove(), 9000);
   }
 
   // ---------- Boutique ----------
@@ -164,55 +150,109 @@ class UI {
   toggleShop(force) {
     const open = force !== undefined ? force : !this.shopOpen();
     this.el.shop.classList.toggle('hidden', !open);
-    if (open) { this.refreshShop(true); this.app.audio.play('click'); }
+    if (open) { if (!this.el.shop.dataset.built) this.buildShop(); if (!this.selItem) this.selItem = this.recommended()[0]; this.renderShopGrid(); this.refreshShop(true); this.app.audio.play('click'); }
   }
+  recommended() { const h = this.game.player, out = []; for (const id of h.def.build) { if (!out.includes(id)) out.push(id); } if (!out.includes('potion')) out.push('potion'); return out; }
   buildShop() {
-    const h = this.game.player;
-    const mk = (box, ids) => { box.innerHTML = ''; for (const id of ids) { const d = document.createElement('div'); d.className = 'si'; d.dataset.id = id; d.appendChild(this.iconCanvas(id, 56, 'item')); d.insertAdjacentHTML('beforeend', `<div class="c">${ITEMS[id].cost}</div>`); d.dataset.tip = '1'; d._tip = () => this.itemTip(id); d.addEventListener('click', () => { this.selItem = id; this.refreshShop(true); }); d.addEventListener('dblclick', () => this.game.buy(h, id)); d.addEventListener('contextmenu', e => { e.preventDefault(); this.game.buy(h, id); }); box.appendChild(d); } };
-    mk(this.el.shopRec, [...new Set(h.def.build)]);
-    mk(this.el.shopT1, Object.keys(ITEMS).filter(k => ITEMS[k].tier === 1));
-    mk(this.el.shopT2, Object.keys(ITEMS).filter(k => ITEMS[k].tier === 2));
-    this.selItem = h.def.build[0];
+    const s = this.el.shop; s.dataset.built = '1';
+    s.innerHTML = `<div class="shHead"><div class="ttl">Comptoir de Gros‑Louis<small>Pièces, armes et blindages de récupération</small></div><div id="shStatus"></div><div class="gold"><span class="coin"></span><b id="shGold">0</b></div><button class="x" id="shClose">✕</button></div>
+      <div class="shBody"><nav id="shCats"></nav><div class="shGrid" id="shGrid"></div><div class="shDetail" id="shDetail"></div></div>
+      <div class="shFoot"><span class="lbl">Inventaire</span><div id="shInv"></div><span class="hint">Clic droit sur un objet de la boutique : achat rapide · clic sur un objet de l’inventaire : sélection</span></div>`;
+    document.getElementById('shClose').addEventListener('click', () => this.toggleShop(false));
+    const cats = document.getElementById('shCats');
+    for (const [k, label] of [['rec', 'Recommandés'], ...Object.entries(ITEM_CATS)]) {
+      const a = document.createElement('a'); a.textContent = label; a.dataset.c = k; a.addEventListener('click', () => { this.shopCat = k; this.renderShopGrid(); }); cats.appendChild(a);
+    }
+  }
+  itemCell(id) {
+    const d = document.createElement('div'); d.className = 'si'; d.dataset.id = id;
+    d.appendChild(Icons.get(id, 96, 'item')); d.insertAdjacentHTML('beforeend', '<span class="c"></span>');
+    d.dataset.tip = '1'; d._tip = () => this.itemTip(id);
+    d.addEventListener('click', () => { this.selItem = id; this.refreshShop(true); });
+    d.addEventListener('contextmenu', e => { e.preventDefault(); this.game.buy(this.game.player, id); this.refreshShop(true); });
+    return d;
+  }
+  renderShopGrid() {
+    const grid = document.getElementById('shGrid'); grid.innerHTML = '';
+    document.querySelectorAll('#shCats a').forEach(a => a.classList.toggle('on', a.dataset.c === this.shopCat));
+    if (this.shopCat === 'rec') {
+      grid.insertAdjacentHTML('beforeend', `<div class="sec">Build conseillé pour ${this.game.player.name}</div>`);
+      const row = document.createElement('div'); row.className = 'row build'; this.recommended().forEach((id, i) => { if (i) row.insertAdjacentHTML('beforeend', '<span class="arrow">›</span>'); row.appendChild(this.itemCell(id)); }); grid.appendChild(row);
+      return;
+    }
+    const ids = Object.keys(ITEMS).filter(id => this.shopCat === 'all' || ITEMS[id].cat === this.shopCat);
+    for (const [tier, label] of [[3, 'Légendaires'], [2, 'Intermédiaires'], [1, 'Composants'], [0, 'Consommables']]) {
+      const list = ids.filter(id => ITEMS[id].tier === tier).sort((a, b) => ITEMS[a].cost - ITEMS[b].cost); if (!list.length) continue;
+      grid.insertAdjacentHTML('beforeend', `<div class="sec">${label}</div>`);
+      const row = document.createElement('div'); row.className = 'row'; for (const id of list) row.appendChild(this.itemCell(id)); grid.appendChild(row);
+    }
+  }
+  ownedPaths(id) {
+    const h = this.game.player, used = new Set(), owned = new Set();
+    const rec = (iid, path, top) => {
+      if (!top) { const idx = h.items.findIndex((s, i) => s.id === iid && !used.has(i)); if (idx >= 0) { used.add(idx); owned.add(path); return; } }
+      (ITEMS[iid].from || []).forEach((c, i) => rec(c, path + '.' + i, false));
+    };
+    rec(id, 'r', true); return owned;
+  }
+  treeNode(id, path, owned) {
+    const n = document.createElement('div'); n.className = 'tn';
+    const head = document.createElement('div'); head.className = 'ti' + (owned.has(path) ? ' own' : ''); head.appendChild(Icons.get(id, 64, 'item'));
+    head.insertAdjacentHTML('beforeend', `<span>${owned.has(path) ? '✓' : ITEMS[id].recipe && ITEMS[id].from ? '+' + ITEMS[id].recipe : ITEMS[id].cost}</span>`);
+    head.dataset.tip = '1'; head._tip = () => this.itemTip(id); head.addEventListener('click', () => { this.selItem = id; this.refreshShop(true); });
+    n.appendChild(head);
+    const from = ITEMS[id].from;
+    if (from && !owned.has(path)) { const ch = document.createElement('div'); ch.className = 'tc'; from.forEach((c, i) => ch.appendChild(this.treeNode(c, path + '.' + i, owned))); n.appendChild(ch); }
+    return n;
   }
   refreshShop(force) {
     const g = this.game, h = g.player, can = g.canShop(h);
-    this.el.shopGold.textContent = Math.floor(h.gold);
-    this.el.shopStatus.textContent = can ? (h.dead ? 'À terre : vous pouvez acheter' : 'À la base : achats possibles') : 'Rejoignez votre base pour acheter (' + this.keyLabel('recall') + ')';
-    this.el.shopStatus.classList.toggle('no', !can);
-    for (const d of this.el.shop.querySelectorAll('.si')) { d.classList.toggle('sel', d.dataset.id === this.selItem); d.classList.toggle('poor', ITEMS[d.dataset.id].cost > h.gold); }
-    const sig = this.selItem + '|' + h.items.join(',') + '|' + can + '|' + Math.floor(h.gold / 50);
-    if (sig === this._shopSig && !force) return;
-    this._shopSig = sig;
-    const it = ITEMS[this.selItem], box = this.el.shopDetail; box.innerHTML = '';
-    box.appendChild(this.iconCanvas(this.selItem, 72, 'item'));
-    box.insertAdjacentHTML('beforeend', `<div class="nm">${it.name}</div><div class="st">${Object.entries(it.stats).map(([k, v]) => `<div><span>${STAT_LABELS[k][0]}</span><b>${STAT_LABELS[k][1](v)}</b></div>`).join('')}</div>`);
-    const b = document.createElement('a'); b.className = 'btn primary' + (can && h.gold >= it.cost && h.items.length < 6 ? '' : ' off'); b.textContent = `Acheter · ${it.cost}`;
-    b.addEventListener('click', () => { g.buy(h, this.selItem); this.refreshShop(true); });
-    box.appendChild(b);
-    box.insertAdjacentHTML('beforeend', `<div class="own">Inventaire (${h.items.length}/6) · clic pour revendre à 60 %</div>`);
-    const own = document.createElement('div'); own.className = 'ownRow';
-    h.items.forEach((id, i) => { const s = document.createElement('div'); s.className = 'slot'; s.appendChild(this.iconCanvas(id, 38, 'item')); s.dataset.tip = '1'; s._tip = () => this.itemTip(id) + `<br><span class="k">Revendre : ${Math.round(ITEMS[id].cost * 0.6)} or</span>`; s.addEventListener('click', () => { g.sell(h, i); this.refreshShop(true); }); own.appendChild(s); });
-    box.appendChild(own);
+    document.getElementById('shGold').textContent = Math.floor(h.gold);
+    const st = document.getElementById('shStatus'); st.textContent = can ? (h.dead ? 'À terre : achats possibles' : 'À la base : achats possibles') : `Hors de la base : rentrez avec ${this.keyLabel('recall')} pour acheter`; st.className = can ? 'ok' : 'no';
+    for (const d of this.el.shop.querySelectorAll('.si')) {
+      const id = d.dataset.id, it = ITEMS[id], p = it.consumable ? it.recipe : g.priceFor(h, id).price;
+      d.querySelector('.c').textContent = p; d.classList.toggle('poor', p > h.gold); d.classList.toggle('sel', id === this.selItem);
+      d.classList.toggle('owned', h.items.some(s => s.id === id));
+    }
+    const sig = this.selItem + '|' + h.items.map(s => s.id + (s.n || '')).join(',') + '|' + can + '|' + Math.floor(h.gold / 25);
+    if (sig === this._sig && !force) return; this._sig = sig;
+    const id = this.selItem, it = ITEMS[id], box = document.getElementById('shDetail'), price = it.consumable ? it.recipe : g.priceFor(h, id).price;
+    box.innerHTML = '';
+    const top = document.createElement('div'); top.className = 'dtop'; top.appendChild(Icons.get(id, 96, 'item'));
+    top.insertAdjacentHTML('beforeend', `<div><div class="nm">${it.name}</div><div class="pr"><span class="coin"></span>${price}${price !== it.cost && !it.consumable ? ` <s>${it.cost}</s>` : ''}</div><div class="tier">${['Consommable', 'Composant', 'Intermédiaire', 'Légendaire'][it.tier]}</div></div>`);
+    box.appendChild(top);
+    box.insertAdjacentHTML('beforeend', `<div class="st">${Object.entries(it.stats).map(([k, v]) => `<div><span>${STAT_LABELS[k][0]}</span><b>${STAT_LABELS[k][1](v)}</b></div>`).join('')}</div>${it.passive ? `<p class="pas"><b>Passif :</b> ${it.passive}</p>` : ''}${it.desc ? `<p class="pas">${it.desc}</p>` : ''}`);
+    if (it.from) { box.insertAdjacentHTML('beforeend', '<div class="lbl">Fabrication</div>'); const tree = document.createElement('div'); tree.className = 'tree'; tree.appendChild(this.treeNode(id, 'r', this.ownedPaths(id))); box.appendChild(tree); }
+    if (it.into.length) { box.insertAdjacentHTML('beforeend', '<div class="lbl">Sert à fabriquer</div>'); const r = document.createElement('div'); r.className = 'into'; for (const p of it.into) { const c = Icons.get(p, 56, 'item'); c.dataset.tip = '1'; c._tip = () => this.itemTip(p); c.addEventListener('click', () => { this.selItem = p; this.refreshShop(true); }); r.appendChild(c); } box.appendChild(r); }
+    const b = document.createElement('a'); b.className = 'btn primary buy' + (can && h.gold >= price ? '' : ' off'); b.innerHTML = `Acheter <span class="coin"></span>${price}`;
+    b.addEventListener('click', () => { g.buy(h, id); this.refreshShop(true); }); box.appendChild(b);
+    const inv = document.getElementById('shInv'); inv.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement('div'); s.className = 'slot'; const x = h.items[i];
+      if (x) { s.appendChild(Icons.get(x.id, 80, 'item')); if (x.n) s.insertAdjacentHTML('beforeend', `<span class="n">${x.n}</span>`); s.dataset.tip = '1'; s._tip = () => this.itemTip(x.id) + `<br><span class="k">Clic droit : revendre ${Math.round(ITEMS[x.id].consumable ? ITEMS[x.id].recipe * 0.5 * x.n : ITEMS[x.id].cost * 0.7)} or</span>`; s.addEventListener('click', () => { this.selItem = x.id; this.refreshShop(true); }); s.addEventListener('contextmenu', e => { e.preventDefault(); g.sell(h, i); this.refreshShop(true); }); }
+      inv.appendChild(s);
+    }
   }
 
   // ---------- Tableau des scores ----------
   showScore(on) { this.el.scoreboard.classList.toggle('hidden', !on); if (on) this.renderScore(); }
-  scoreTable(heroes, withTeam = true) {
+  scoreTable(heroes) {
     const g = this.game;
-    let html = '<table><tr><th></th><th>Héros</th><th>Niv.</th><th>É / M / A</th><th>Sbires</th><th>Objets</th></tr>';
+    let html = '';
     for (const team of [0, 1]) {
-      if (withTeam) html += `<tr><td colspan="6" class="team ${team ? 'red' : 'blue'}">${TEAM_INFO[team].name} · ${g.kills[team]}</td></tr>`;
-      for (const h of heroes.filter(x => x.team === team)) html += `<tr class="${h.isPlayer ? 'me' : ''}" data-h="${h.id}"><td class="p"></td><td>${h.name}${h.isPlayer ? ' (vous)' : ''}</td><td>${h.level}</td><td>${h.k} / ${h.d} / ${h.a}</td><td>${h.cs}</td><td class="it"></td></tr>`;
+      const list = heroes.filter(x => x.team === team);
+      html += `<div class="sbTeam ${team ? 'red' : 'blue'}"><div class="sbHead"><span>${TEAM_INFO[team].name}</span><b>${g.kills[team]}</b><small>${g.towersDown[1 - team]} tourelles · ${g.dragons[team]} ver${g.dragons[team] > 1 ? 's' : ''}</small></div><table><tr><th></th><th>Héros</th><th>Poste</th><th>Niv.</th><th>É / M / A</th><th>Sbires</th><th>Objets</th></tr>`;
+      for (const h of list) html += `<tr class="${h.isPlayer ? 'me' : ''}" data-h="${h.id}"><td class="p"></td><td>${h.name}${h.isPlayer ? ' <em>(vous)</em>' : ''}</td><td>${ROLE_GLYPH[h.role]} ${ROLES[h.role].label}</td><td>${h.level}</td><td>${h.k} / ${h.d} / ${h.a}</td><td>${h.cs}</td><td class="it"></td></tr>`;
+      html += '</table></div>';
     }
-    return html + '</table>';
+    return html;
   }
   fillScore(box) {
     const g = this.game;
     for (const tr of box.querySelectorAll('tr[data-h]')) {
       const h = g.heroes.find(x => x.id === +tr.dataset.h);
-      tr.querySelector('.p').appendChild(this.portraitCanvas(h.heroId, 64, h.team));
-      const it = document.createElement('div'); it.className = 'mini-items'; for (const id of h.items) it.appendChild(this.iconCanvas(id, 22, 'item'));
-      tr.querySelector('.it').appendChild(it);
+      const p = this.portrait(h.heroId, 36, h.team); if (h.dead) p.style.filter = 'grayscale(1)'; tr.querySelector('.p').appendChild(p);
+      const it = document.createElement('div'); it.className = 'mini'; for (const s of h.items) it.appendChild(Icons.get(s.id, 48, 'item')); tr.querySelector('.it').appendChild(it);
     }
   }
   renderScore() { const box = this.el.scoreboard; box.innerHTML = this.scoreTable(this.game.heroes); this.fillScore(box); }

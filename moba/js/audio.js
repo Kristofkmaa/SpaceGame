@@ -38,7 +38,7 @@ class GameAudio {
   play(name, x, y) {
     if (!this.ctx || this.ctx.state !== 'running') return;
     const vol = this.gainFor(x, y); if (vol <= 0.02) return;
-    const now = performance.now(), gap = { rifle: 60, dart: 60, sparkShot: 60, hammer: 60, clank: 70, bow: 70, tower: 100, gold: 40, volley: 90 }[name] || 40;
+    const now = performance.now(), gap = { rifle: 60, dart: 60, sparkShot: 60, flameShot: 60, hammer: 60, swipe: 60, clank: 90, bow: 90, tower: 100, gold: 40, volley: 90, thud: 60, death: 100 }[name] || 40;
     if (this.last[name] && now - this.last[name] < gap) return;
     this.last[name] = now;
     const c = this.ctx, t = c.currentTime, out = c.createGain(); out.connect(this.sfx);
@@ -86,6 +86,13 @@ class GameAudio {
       case 'buy': osc('triangle', 1200, 1200, 0.05, 0.05); osc('triangle', 1600, 1600, 0.08, 0.05, 0.06); break;
       case 'error': osc('square', 160, 120, 0.15, 0.06); break;
       case 'click': noise(0.03, 0.08, 3000, 2000, 'bandpass', 3); break;
+      case 'gong': osc('triangle', 220, 210, 0.9, 0.12); osc('sine', 440, 430, 0.6, 0.06); noise(0.1, 0.15, 3000, 1000, 'bandpass', 2); break;
+      case 'growl': { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.linearRampToValueAtTime(60, t + 0.4); const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; const g = c.createGain(); env(g, 0.12 * vol, 0.03, 0.4); o.connect(f); f.connect(g); g.connect(out); o.start(t); o.stop(t + 0.5); break; }
+      case 'swipe': noise(0.15, 0.18, 4000, 900, 'bandpass', 1.5); break;
+      case 'flame': noise(0.6, 0.3, 900, 300, 'lowpass', 0.7); break;
+      case 'flameShot': noise(0.15, 0.12, 1400, 500, 'lowpass', 0.7); break;
+      case 'spring': osc('sine', 200, 900, 0.25, 0.08); osc('sine', 900, 300, 0.2, 0.05, 0.2); break;
+      case 'build': noise(0.05, 0.14, 3500, 2500, 'bandpass', 5); osc('triangle', 1800, 1800, 0.08, 0.05, 0.1); break;
       case 'announceGood': [523, 784].forEach((f, i) => osc('sawtooth', f, f, 0.3, 0.05, i * 0.15)); break;
       case 'announceBad': [392, 294].forEach((f, i) => osc('sawtooth', f, f, 0.35, 0.05, i * 0.18)); break;
     }
