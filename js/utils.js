@@ -29,3 +29,9 @@ const Utils = {
     };
   },
 };
+Utils.easeOut = t => 1 - Math.pow(1 - t, 3);
+Utils.rgba = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+Utils.normAngle = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };

@@ -3,103 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nebula Command — RTS spatial</title>
+  <title>Nebula Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <canvas id="game"></canvas>
 
-  <!-- Barre du haut -->
-  <div id="topbar" class="hud hidden">
-    <div class="res"><span class="icon mineral"></span><span id="minerals">0</span></div>
-    <div class="res"><span class="icon ships"></span><span id="unitCount">0</span></div>
-    <div class="res"><span class="icon clock"></span><span id="clock">00:00</span></div>
-    <div class="spacer"></div>
-    <button id="btnSpeed" class="small" title="Vitesse du jeu (touche +/-)">x1</button>
-    <button id="btnPause" class="small" title="Pause (P)">Pause</button>
-    <button id="btnHelp" class="small" title="Aide (F1)">?</button>
+  <!-- ===================== HUD EN JEU ===================== -->
+  <div id="hud" class="hidden">
+    <div id="hudTop">
+      <div class="stat"><span class="lbl">Ressources</span><span class="val" id="ru">0</span></div>
+      <div class="stat"><span class="lbl">Flotte</span><span class="val"><span id="cap">0</span><span class="dim">/</span><span id="capMax">0</span></span></div>
+      <div class="stat"><span class="lbl">Temps</span><span class="val" id="clock">00:00</span></div>
+      <div class="stat clickable" id="speedStat" title="Vitesse (+ / -)"><span class="lbl">Vitesse</span><span class="val" id="speed">1×</span></div>
+      <div class="stat clickable" id="btnMenu" title="Menu (Échap)"><span class="lbl">Système</span><span class="val">Menu</span></div>
+    </div>
+
+    <div id="log"></div>
+    <div id="hint" class="hidden"></div>
+
+    <div id="hudBottom">
+      <div id="selPanel" class="frame">
+        <div id="selEmpty">Aucune sélection</div>
+        <div id="selSingle" class="hidden">
+          <canvas id="selPortrait" width="96" height="96"></canvas>
+          <div id="selInfo">
+            <div id="selName"></div>
+            <div id="selClass"></div>
+            <div class="bar"><div id="selHp"></div></div>
+            <div id="selStats"></div>
+          </div>
+        </div>
+        <div id="selMulti" class="hidden"></div>
+      </div>
+
+      <div id="cmdCard" class="frame">
+        <div id="cmdTitle" class="frameTitle">Commandes</div>
+        <div id="cmdGrid"></div>
+        <div id="queue"></div>
+      </div>
+
+      <div id="rightPanel">
+        <div id="buildBar" class="frame">
+          <button class="tabBtn" id="btnBuild" data-tip="<b>Construction</b><br>Bâtiments et modules de la flotte."><span class="k">B</span>Construire</button>
+          <button class="tabBtn" id="btnResearch" data-tip="<b>Recherche</b><br>Nécessite un module de recherche."><span class="k">R</span>Recherche</button>
+        </div>
+        <div id="mapFrame" class="frame"><canvas id="minimap" width="240" height="170"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panneau latéral construction / recherche -->
+    <div id="sidePanel" class="hidden">
+      <div class="sideHead"><span id="sideTitle">Construction</span><button id="sideClose">✕</button></div>
+      <div id="sideList"></div>
+    </div>
   </div>
 
-  <!-- Panneau du bas -->
-  <div id="bottombar" class="hud hidden">
-    <canvas id="minimap" width="220" height="165"></canvas>
-    <div id="selection">
-      <div id="selTitle">Aucune sélection</div>
-      <div id="selBody"></div>
-    </div>
-    <div id="commands">
-      <div class="cmdTitle">Commandes</div>
-      <div id="cmdButtons"></div>
-    </div>
-    <div id="build">
-      <div class="cmdTitle">Construction</div>
-      <div id="buildButtons"></div>
-    </div>
-  </div>
-
-  <div id="messages"></div>
   <div id="tooltip" class="hidden"></div>
 
-  <!-- Écran de démarrage -->
-  <div id="startScreen" class="overlay">
-    <div class="panel">
-      <h1>NEBULA COMMAND</h1>
-      <p class="subtitle">Stratégie en temps réel dans l'espace</p>
-      <p>Extrayez des minéraux des astéroïdes, construisez une flotte et détruisez la station ennemie.</p>
-      <div class="difficulty">
-        <label>Difficulté :</label>
-        <button class="diff" data-diff="easy">Facile</button>
-        <button class="diff selected" data-diff="normal">Normal</button>
-        <button class="diff" data-diff="hard">Difficile</button>
+  <!-- ===================== ÉCRANS ===================== -->
+  <div id="screens">
+    <!-- Menu principal -->
+    <div id="screenMain" class="screen">
+      <div class="brand">
+        <div class="brandTitle">Nebula<br>Command</div>
+        <div class="rule"></div>
+        <div class="brandSub">Stratégie en temps réel — secteur Kharak‑7</div>
       </div>
-      <button id="btnStart" class="primary">Lancer la partie</button>
-      <div class="help">
-        <h3>Contrôles</h3>
-        <ul>
-          <li><b>Clic gauche / glisser</b> : sélectionner (Maj pour ajouter)</li>
-          <li><b>Clic droit</b> : déplacer / attaquer / extraire selon la cible</li>
-          <li><b>A</b> puis clic : attaque en mouvement &nbsp;•&nbsp; <b>S</b> : stop</li>
-          <li><b>Ctrl + 1‑5</b> : créer un groupe &nbsp;•&nbsp; <b>1‑5</b> : rappeler le groupe</li>
-          <li><b>Flèches / bord d'écran / clic milieu</b> : caméra &nbsp;•&nbsp; <b>Molette</b> : zoom</li>
-          <li><b>Espace</b> : centrer sur la station &nbsp;•&nbsp; <b>P</b> : pause &nbsp;•&nbsp; <b>Échap</b> : annuler</li>
-        </ul>
+      <nav class="mainNav">
+        <a data-go="skirmish">Escarmouche</a>
+        <a data-go="codex">Codex de la flotte</a>
+        <a data-go="options">Options</a>
+      </nav>
+      <div class="footer">v2 — HTML5 Canvas, sans dépendance</div>
+    </div>
+
+    <!-- Escarmouche -->
+    <div id="screenSkirmish" class="screen hidden">
+      <div class="panel wide">
+        <div class="panelTitle">Escarmouche</div>
+        <div class="setting"><span class="lbl">Adversaire</span><div class="seg" data-key="difficulty"></div></div>
+        <div class="setting"><span class="lbl">Carte</span><div class="seg" data-key="map"></div></div>
+        <div class="setting"><span class="lbl">Ressources initiales</span><div class="seg" data-key="resources"></div></div>
+        <p class="brief" id="brief"></p>
+        <div class="actions"><a class="btn ghost" data-go="main">Retour</a><a class="btn primary" id="btnDeploy">Déployer la flotte</a></div>
       </div>
     </div>
-  </div>
 
-  <!-- Écran de fin -->
-  <div id="endScreen" class="overlay hidden">
-    <div class="panel">
-      <h1 id="endTitle">Victoire</h1>
-      <p id="endText"></p>
-      <button id="btnRestart" class="primary">Rejouer</button>
+    <!-- Codex -->
+    <div id="screenCodex" class="screen hidden">
+      <div class="panel wide codex">
+        <div class="panelTitle">Codex de la flotte</div>
+        <div class="codexTabs"><a class="on" data-tab="units">Vaisseaux</a><a data-tab="structures">Structures</a><a data-tab="controls">Contrôles</a><a data-tab="doctrine">Doctrine</a></div>
+        <div id="codexBody"></div>
+        <div class="actions"><a class="btn ghost" data-go="back">Retour</a></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Aide en jeu -->
-  <div id="helpScreen" class="overlay hidden">
-    <div class="panel">
-      <h2>Aide</h2>
-      <ul class="help">
-        <li><b>Collecteur</b> : clic droit sur un astéroïde pour extraire. Il revient déposer à la station automatiquement.</li>
-        <li><b>Station</b> : produit toutes les unités. Sélectionnez‑la pour lancer la production. Clic droit avec la station sélectionnée définit le point de ralliement.</li>
-        <li><b>Chantier</b> : produit les vaisseaux de combat plus près du front.</li>
-        <li><b>Tourelle</b> : défense statique à longue portée.</li>
-        <li><b>Chasseur</b> : rapide et fragile. <b>Frégate</b> : polyvalente. <b>Croiseur</b> : lent mais dévastateur.</li>
-        <li>Les bâtiments se placent à proximité d'un bâtiment existant.</li>
-      </ul>
-      <button id="btnCloseHelp" class="primary">Fermer</button>
+    <!-- Options -->
+    <div id="screenOptions" class="screen hidden">
+      <div class="panel">
+        <div class="panelTitle">Options</div>
+        <div class="setting"><span class="lbl">Volume général</span><input type="range" id="optVolume" min="0" max="100"></div>
+        <div class="setting"><span class="lbl">Ambiance sonore</span><div class="seg" data-opt="music"><a data-v="1">Activée</a><a data-v="0">Coupée</a></div></div>
+        <div class="setting"><span class="lbl">Défilement par les bords</span><div class="seg" data-opt="edgeScroll"><a data-v="1">Activé</a><a data-v="0">Désactivé</a></div></div>
+        <div class="setting"><span class="lbl">Grille stratégique</span><div class="seg" data-opt="grid"><a data-v="1">Affichée</a><a data-v="0">Masquée</a></div></div>
+        <div class="setting"><span class="lbl">Portées affichées</span><div class="seg" data-opt="ranges"><a data-v="1">Sélection</a><a data-v="0">Jamais</a></div></div>
+        <div class="actions"><a class="btn ghost" data-go="back">Retour</a></div>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="screenPause" class="screen hidden translucent">
+      <div class="panel narrow">
+        <div class="panelTitle">Partie suspendue</div>
+        <nav class="mainNav small">
+          <a id="btnResume">Reprendre</a>
+          <a data-go="options">Options</a>
+          <a data-go="codex">Codex</a>
+          <a id="btnAbandon">Abandonner la partie</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Fin -->
+    <div id="screenEnd" class="screen hidden translucent">
+      <div class="panel">
+        <div class="panelTitle big" id="endTitle">Victoire</div>
+        <p id="endText"></p>
+        <table id="endStats"></table>
+        <div class="actions"><a class="btn ghost" data-go="main">Menu principal</a><a class="btn primary" id="btnReplay">Rejouer</a></div>
+      </div>
     </div>
   </div>
 
   <script src="js/utils.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/entities.js"></script>
   <script src="js/world.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/menu.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
 </body>
