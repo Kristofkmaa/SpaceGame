@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nebula Command — RTS spatial</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Barre du haut -->
+  <div id="topbar" class="hud hidden">
+    <div class="res"><span class="icon mineral"></span><span id="minerals">0</span></div>
+    <div class="res"><span class="icon ships"></span><span id="unitCount">0</span></div>
+    <div class="res"><span class="icon clock"></span><span id="clock">00:00</span></div>
+    <div class="spacer"></div>
+    <button id="btnSpeed" class="small" title="Vitesse du jeu (touche +/-)">x1</button>
+    <button id="btnPause" class="small" title="Pause (P)">Pause</button>
+    <button id="btnHelp" class="small" title="Aide (F1)">?</button>
+  </div>
+
+  <!-- Panneau du bas -->
+  <div id="bottombar" class="hud hidden">
+    <canvas id="minimap" width="220" height="165"></canvas>
+    <div id="selection">
+      <div id="selTitle">Aucune sélection</div>
+      <div id="selBody"></div>
+    </div>
+    <div id="commands">
+      <div class="cmdTitle">Commandes</div>
+      <div id="cmdButtons"></div>
+    </div>
+    <div id="build">
+      <div class="cmdTitle">Construction</div>
+      <div id="buildButtons"></div>
+    </div>
+  </div>
+
+  <div id="messages"></div>
+  <div id="tooltip" class="hidden"></div>
+
+  <!-- Écran de démarrage -->
+  <div id="startScreen" class="overlay">
+    <div class="panel">
+      <h1>NEBULA COMMAND</h1>
+      <p class="subtitle">Stratégie en temps réel dans l'espace</p>
+      <p>Extrayez des minéraux des astéroïdes, construisez une flotte et détruisez la station ennemie.</p>
+      <div class="difficulty">
+        <label>Difficulté :</label>
+        <button class="diff" data-diff="easy">Facile</button>
+        <button class="diff selected" data-diff="normal">Normal</button>
+        <button class="diff" data-diff="hard">Difficile</button>
+      </div>
+      <button id="btnStart" class="primary">Lancer la partie</button>
+      <div class="help">
+        <h3>Contrôles</h3>
+        <ul>
+          <li><b>Clic gauche / glisser</b> : sélectionner (Maj pour ajouter)</li>
+          <li><b>Clic droit</b> : déplacer / attaquer / extraire selon la cible</li>
+          <li><b>A</b> puis clic : attaque en mouvement &nbsp;•&nbsp; <b>S</b> : stop</li>
+          <li><b>Ctrl + 1‑5</b> : créer un groupe &nbsp;•&nbsp; <b>1‑5</b> : rappeler le groupe</li>
+          <li><b>Flèches / bord d'écran / clic milieu</b> : caméra &nbsp;•&nbsp; <b>Molette</b> : zoom</li>
+          <li><b>Espace</b> : centrer sur la station &nbsp;•&nbsp; <b>P</b> : pause &nbsp;•&nbsp; <b>Échap</b> : annuler</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran de fin -->
+  <div id="endScreen" class="overlay hidden">
+    <div class="panel">
+      <h1 id="endTitle">Victoire</h1>
+      <p id="endText"></p>
+      <button id="btnRestart" class="primary">Rejouer</button>
+    </div>
+  </div>
+
+  <!-- Aide en jeu -->
+  <div id="helpScreen" class="overlay hidden">
+    <div class="panel">
+      <h2>Aide</h2>
+      <ul class="help">
+        <li><b>Collecteur</b> : clic droit sur un astéroïde pour extraire. Il revient déposer à la station automatiquement.</li>
+        <li><b>Station</b> : produit toutes les unités. Sélectionnez‑la pour lancer la production. Clic droit avec la station sélectionnée définit le point de ralliement.</li>
+        <li><b>Chantier</b> : produit les vaisseaux de combat plus près du front.</li>
+        <li><b>Tourelle</b> : défense statique à longue portée.</li>
+        <li><b>Chasseur</b> : rapide et fragile. <b>Frégate</b> : polyvalente. <b>Croiseur</b> : lent mais dévastateur.</li>
+        <li>Les bâtiments se placent à proximité d'un bâtiment existant.</li>
+      </ul>
+      <button id="btnCloseHelp" class="primary">Fermer</button>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
