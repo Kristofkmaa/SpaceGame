@@ -37,6 +37,10 @@ class UI {
   }
   buildAbilities() {
     const g = this.game, h = g.player, row = this.el.abilityRow; row.innerHTML = ''; this.abEls = [];
+    const P = PASSIVES[h.def.passive], pd = document.createElement('div'); pd.className = 'ab pas';
+    pd.appendChild(Icons.get(h.def.passive, 96, 'ability', h.heroId)); pd.insertAdjacentHTML('beforeend', '<span class="cnt"></span><span class="tag">Passif</span>');
+    pd.dataset.tip = '1'; pd._tip = () => `<b>${P.name}</b> <span class="u">Passif</span><div class="d">${P.desc()}</div>`;
+    row.appendChild(pd); this.pasEl = pd;
     h.def.abilities.forEach((id, slot) => {
       const d = document.createElement('div'); d.className = 'ab' + (slot === 3 ? ' ult' : '');
       d.appendChild(Icons.get(id, 120, 'ability', h.heroId));
@@ -81,14 +85,16 @@ class UI {
     this.el.hpText.textContent = `${Math.ceil(h.hp)} / ${Math.round(h.maxHp)}`;
     this.el.manaFill.style.width = (h.mana / h.maxMana * 100) + '%'; this.el.manaText.textContent = `${Math.floor(h.mana)} / ${Math.round(h.maxMana)}`;
     this.el.gold.textContent = Math.floor(h.gold);
+    const P = PASSIVES[h.def.passive], sil = h.silenced(t), free = h.pas.free > t;
+    if (this.pasEl) { this.pasEl.querySelector('.cnt').textContent = P.counter ? P.counter(h) : ''; this.pasEl.classList.toggle('ready', !!(P.ready && P.ready(h))); }
     h.def.abilities.forEach((id, slot) => {
-      const d = this.abEls[slot], ab = ABILITIES[id], r = h.ranks[slot], total = r ? ab.cd[r - 1] * (1 - h.st.cdr) : 1, cd = h.cds[slot];
-      d.classList.toggle('locked', r === 0); d.classList.toggle('nomana', r > 0 && cd <= 0 && h.mana < ab.cost[r - 1]);
-      d.classList.toggle('ready', r > 0 && cd <= 0 && h.mana >= ab.cost[r - 1]);
+      const d = this.abEls[slot], ab = ABILITIES[id], r = h.ranks[slot], total = r ? ab.cd[r - 1] * (1 - h.st.cdr) : 1, cd = h.cds[slot], cost = r ? (free ? 0 : ab.cost[r - 1]) : 0;
+      d.classList.toggle('locked', r === 0); d.classList.toggle('nomana', r > 0 && cd <= 0 && h.mana < cost);
+      d.classList.toggle('ready', r > 0 && cd <= 0 && h.mana >= cost && !sil); d.classList.toggle('silenced', sil);
       d.classList.toggle('aiming', !!(this.app.input.aiming && this.app.input.aiming.slot === slot));
       d.querySelector('.cd').style.background = cd > 0 ? `conic-gradient(transparent ${360 * (1 - cd / total)}deg, rgba(6,4,2,0.74) 0deg)` : 'none';
       d.querySelector('.cdT').textContent = cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
-      d.querySelector('.cost').textContent = r ? ab.cost[r - 1] : '';
+      d.querySelector('.cost').textContent = r ? cost : '';
       d.querySelectorAll('.pips i').forEach((p, i) => p.classList.toggle('on', i < r));
       d.querySelector('.up').classList.toggle('hidden', !h.canLevel(slot));
     });

@@ -12,8 +12,8 @@ const NET = {
   DETAIL_EVERY: 3,     // statistiques complètes des héros : un instantané sur trois
   INTERP: 0.17,        // retard d'affichage côté client (s)
   MAX_MSG: 3900,       // octets par message (limite du salon : 4 Kio)
-  VISUALS: ['bullet', 'dart', 'spark', 'ember', 'bolt', 'shell', 'flare', 'slug', 'syringe', 'spit', 'acid'],
-  ZONES: ['', 'gas', 'fire', 'inferno', 'mine', 'storm', 'trap', 'miniturret'],
+  VISUALS: ['bullet', 'dart', 'spark', 'ember', 'bolt', 'shell', 'flare', 'slug', 'syringe', 'spit', 'acid', 'hook', 'water', 'wave', 'sound', 'note', 'sniper'],
+  ZONES: ['', 'gas', 'fire', 'inferno', 'mine', 'storm', 'trap', 'miniturret', 'magnet', 'tar', 'puddle', 'bombard'],
 };
 NET.MINION_TYPES = Object.keys(MINIONS);
 NET.MONSTER_TYPES = Object.keys(MONSTERS);
@@ -358,7 +358,7 @@ class NetHost {
     for (const h of g.heroes) {
       w.u16(h.id); w.u16(h.x); w.u16(h.y); w.u8(h.z || 0); w.ang(h.angle);
       w.u16(h.hp); w.u16(h.maxHp); w.u16(h.mana); w.u16(h.maxMana);
-      const t = g.time, f = (h.dead ? 1 : 0) | (h.moving ? 2 : 0) | (h.recall ? 4 : 0) | (h.dash ? 8 : 0) | (h.stunned(t) ? 16 : 0) | (h.rooted(t) ? 32 : 0) | (h.channel ? 64 : 0);
+      const t = g.time, f = (h.dead ? 1 : 0) | (h.moving ? 2 : 0) | (h.recall ? 4 : 0) | (h.dash ? 8 : 0) | (h.stunned(t) ? 16 : 0) | (h.rooted(t) ? 32 : 0) | (h.channel ? 64 : 0) | (h.silenced(t) ? 128 : 0) | (h.feared(t) ? 256 : 0);
       w.u16(f); w.age(T, h.attackAnim); w.age(T, h.castAnim); w.u16(h.dead ? 0 : h.shieldAmt(t)); w.u8((h.scale || 1) * 50); w.age(T, h.recall ? h.recall.start : undefined);
     }
     return w.b64();
@@ -369,13 +369,13 @@ class NetHost {
     return w.b64();
   }
   encMinions(list, T) {
-    const w = new BinW(list.length * 15);
-    for (const m of list) { w.u16(m.id); w.u8(NET.MINION_TYPES.indexOf(m.type) * 2 + m.team); w.u16(m.x); w.u16(m.y); w.u16(m.hp); w.u16(m.maxHp); w.ang(m.angle); w.u8(m.moving ? 1 : 0); w.age(T, m.attackAnim); }
+    const w = new BinW(list.length * 16);
+    for (const m of list) { w.u16(m.id); w.u8(NET.MINION_TYPES.indexOf(m.type) * 2 + m.team); w.u16(m.x); w.u16(m.y); w.u16(m.hp); w.u16(m.maxHp); w.ang(m.angle); w.u8(m.moving ? 1 : 0); w.age(T, m.attackAnim); w.u8(m.z || 0); }
     return w.b64();
   }
   encMonsters(T) {
-    const g = this.g, w = new BinW(g.monsters.length * 14);
-    for (const m of g.monsters) { w.u16(m.id); w.u8(NET.MONSTER_TYPES.indexOf(m.type)); w.u8(g.camps.indexOf(m.camp)); w.u16(m.x); w.u16(m.y); w.u16(m.hp); w.ang(m.angle); w.u8(m.moving ? 1 : 0); w.age(T, m.attackAnim); }
+    const g = this.g, w = new BinW(g.monsters.length * 15);
+    for (const m of g.monsters) { w.u16(m.id); w.u8(NET.MONSTER_TYPES.indexOf(m.type)); w.u8(g.camps.indexOf(m.camp)); w.u16(m.x); w.u16(m.y); w.u16(m.hp); w.ang(m.angle); w.u8(m.moving ? 1 : 0); w.age(T, m.attackAnim); w.u8(m.z || 0); }
     return w.b64();
   }
   encProjectiles() {
@@ -383,7 +383,7 @@ class NetHost {
     for (const p of list) {
       let id = this.pids.get(p); if (!id) { id = this.nextPid; this.nextPid = this.nextPid % 65000 + 1; this.pids.set(p, id); }
       const vi = NET.VISUALS.indexOf(p.visual);
-      w.u16(id); w.u8(vi < 0 ? 0 : vi); w.u8((p.team === 1 ? 1 : p.team === 2 ? 2 : 0) | (p.high ? 4 : 0) | (p.homing ? 8 : 0)); w.u16(p.x); w.u16(p.y); w.ang(p.ang); w.u8(p.speed / 10); w.u16(p.homing && p.target && !p.target.dead ? p.target.id : 0);
+      w.u16(id); w.u8(vi < 0 ? 0 : vi); w.u8((p.team === 1 ? 1 : p.team === 2 ? 2 : 0) | (p.high ? 4 : 0) | (p.homing ? 8 : 0)); w.u16(p.x); w.u16(p.y); w.ang(p.ang); w.u8(p.speed / 10); w.u16(p.homing && p.target && !p.target.dead ? p.target.id : p.visual === 'hook' && p.src && p.src.id ? p.src.id : 0);
     }
     return w.b64();
   }
@@ -391,14 +391,14 @@ class NetHost {
     const list = this.g.zones.filter(z => !z.dead && NET.ZONES.indexOf(z.kind) > 0), w = new BinW(list.length * 16);
     for (const z of list) {
       let id = this.zids.get(z); if (!id) { id = this.nextZid; this.nextZid = this.nextZid % 65000 + 1; this.zids.set(z, id); }
-      w.u16(id); w.u8(NET.ZONES.indexOf(z.kind)); w.u8(z.team); w.u16(z.x); w.u16(z.y); w.u16(z.r); w.u16(z.t * 50); w.u8((z.delay || 0) * 20); w.u16(Math.min(3000, z.dur || 0) * 20); w.u8(z.armed ? 1 : 0); w.ang(z.angle || 0);
+      w.u16(id); w.u8(NET.ZONES.indexOf(z.kind)); w.u8(z.team); w.u16(z.x); w.u16(z.y); w.u16(z.r); w.u16(z.t * 50); w.u8((z.delay || 0) * 20); w.u16(Math.min(3000, z.dur || 0) * 20); w.u8((z.armed ? 1 : 0) | (z.big ? 2 : 0)); w.ang(z.angle || 0);
     }
     return w.b64();
   }
   detail(h) {
     const r1 = v => Math.round(v * 10) / 10;
     return [h.id, h.level, Math.round(h.xp), h.points, Math.floor(h.gold), h.k, h.d, h.a, h.cs, h.ranks, h.cds.map(r1), h.spellCds.map(r1), r1(h.respawnAt), h.items.map(s => s.n ? [s.id, s.n] : [s.id]),
-      h.buffs.map(b => [b.id, r1(b.until), b.dur, b.stats || null, b.scale || 0]), Math.round(h.st.ms * h.msMult(this.g.time)), h.human ? (h.nick || '') : ''];
+      h.buffs.map(b => [b.id, r1(b.until), b.dur, b.stats || null, b.scale || 0]), Math.round(h.st.ms * h.msMult(this.g.time)), h.human ? (h.nick || '') : '', Math.round(h.pas.n || 0)];
   }
 }
 
@@ -468,7 +468,7 @@ class NetClient {
   decMinions(str, T) {
     const r = new BinR(str), g = this.g;
     while (r.more()) {
-      const id = r.u16(), ti = r.u8(), s = { t: T, x: r.u16(), y: r.u16(), hp: r.u16(), maxHp: r.u16(), a: r.ang(), f: r.u8(), atk: r.age(T) };
+      const id = r.u16(), ti = r.u8(), s = { t: T, x: r.u16(), y: r.u16(), hp: r.u16(), maxHp: r.u16(), a: r.ang(), f: r.u8(), atk: r.age(T), z: r.u8() };
       let m = this.minionMap.get(id);
       if (!m) {
         const type = NET.MINION_TYPES[ti >> 1] || 'melee';
@@ -481,7 +481,7 @@ class NetClient {
   decMonsters(str, T) {
     const r = new BinR(str), g = this.g;
     while (r.more()) {
-      const id = r.u16(), type = NET.MONSTER_TYPES[r.u8()], ci = r.u8(), s = { t: T, x: r.u16(), y: r.u16(), hp: r.u16(), a: r.ang(), f: r.u8(), atk: r.age(T) };
+      const id = r.u16(), type = NET.MONSTER_TYPES[r.u8()], ci = r.u8(), s = { t: T, x: r.u16(), y: r.u16(), hp: r.u16(), a: r.ang(), f: r.u8(), atk: r.age(T), z: r.u8() };
       let m = this.monsterMap.get(id);
       if (!m) {
         const camp = g.camps[ci] || g.camps[0];
@@ -498,7 +498,7 @@ class NetClient {
       present.add(id);
       let p = this.projMap.get(id);
       if (!p) { p = new Projectile({ visual: NET.VISUALS[vi], team: tf & 3, high: !!(tf & 4), homing: !!(tf & 8), x: s.x, y: s.y, ang: s.a, speed: s.sp, target: null }); p._s = []; p.born = T; this.projMap.set(id, p); }
-      if (s.tg) p.target = this.byId.get(s.tg) || p.target;
+      if (s.tg) { const u = this.byId.get(s.tg); if (p.homing) p.target = u || p.target; else p.src = u || p.src; }
       p.goneAt = null; this.sample(p, s);
     }
     for (const [id, p] of this.projMap) if (!present.has(id) && !p.goneAt) p.goneAt = T;
@@ -506,10 +506,10 @@ class NetClient {
   decZones(str, T) {
     const r = new BinR(str), present = new Set();
     while (r.more()) {
-      const id = r.u16(), kind = NET.ZONES[r.u8()], team = r.u8(), x = r.u16(), y = r.u16(), rad = r.u16(), zt = r.u16() / 50, delay = r.u8() / 20, dur = r.u16() / 20, armed = !!(r.u8() & 1), angle = r.ang();
+      const id = r.u16(), kind = NET.ZONES[r.u8()], team = r.u8(), x = r.u16(), y = r.u16(), rad = r.u16(), zt = r.u16() / 50, delay = r.u8() / 20, dur = r.u16() / 20, zf = r.u8(), armed = !!(zf & 1), angle = r.ang();
       present.add(id);
       let z = this.zoneMap.get(id);
-      if (!z) { z = new Zone({ kind, team, x, y, r: rad, delay, dur, angle }); z.born = T; this.zoneMap.set(id, z); }
+      if (!z) { z = new Zone({ kind, team, x, y, r: rad, delay, dur, angle, big: !!(zf & 2) }); z.born = T; this.zoneMap.set(id, z); }
       Object.assign(z, { x, y, r: rad, delay, dur, angle, base: zt, baseT: T, armedNet: armed, goneAt: null });
     }
     for (const [id, z] of this.zoneMap) if (!present.has(id) && !z.goneAt) z.goneAt = T;
@@ -524,6 +524,7 @@ class NetClient {
       Object.assign(h, { level, xp, points, gold, k, d, a, cs, respawnAt });
       h.ranks = ranks.slice(0, 4); h.cds = cds.slice(0, 4); h.spellCds = scd.slice(0, 2);
       h.buffs = buffs.map(b => ({ id: b[0], until: b[1], dur: b[2], stats: b[3] || undefined, scale: b[4] || undefined }));
+      if (typeof row[17] === 'number' && row[17] !== h.pas.n) { h.pas.n = row[17]; h._sig = null; }
       if (sig !== h._sig) { h._sig = sig; h.items = items.filter(it => ITEMS[it[0]]).map(it => it[1] ? { id: it[0], n: it[1] } : { id: it[0] }); const hp = h.hp, mana = h.mana; h.recompute(); h.hp = hp; h.mana = mana; }
       h.st.ms = ms; h.status.slows = []; h.status.hastes = [];
       if (h !== g.player) { h.nick = row[16] || ''; h.human = !!row[16]; }
@@ -579,7 +580,7 @@ class NetClient {
       if (wasDead && !h.dead && h === g.player) { g.camera.x = h.x; g.camera.y = h.y; }
       h.attackAnim = s.atk; h.castAnim = s.cast; h.scale = s.sc || 1;
       h.status.shields = s.sh ? [{ amt: s.sh, until: Infinity }] : [];
-      h.status.stun = s.f & 16 ? rt + 0.2 : 0; h.status.root = s.f & 32 ? rt + 0.2 : 0;
+      h.status.stun = s.f & 16 ? rt + 0.2 : 0; h.status.root = s.f & 32 ? rt + 0.2 : 0; h.status.silence = s.f & 128 ? rt + 0.2 : 0; h.status.fear = s.f & 256 ? { until: rt + 0.2, x: h.x, y: h.y } : null;
       h.recall = s.f & 4 ? { start: s.rec, end: s.rec + CONFIG.RECALL_TIME } : null;
       for (let i = 0; i < 4; i++) if (h.cds[i] > 0) h.cds[i] = Math.max(0, h.cds[i] - dt);
       for (let i = 0; i < 2; i++) if (h.spellCds[i] > 0) h.spellCds[i] = Math.max(0, h.spellCds[i] - dt);
@@ -596,12 +597,12 @@ class NetClient {
     for (const [id, m] of this.minionMap) {
       if (m.seen < stale) { this.drop(id); continue; }
       const P = this.pick(m, rt); if (!P) continue; const s = P.s0;
-      this.move(m, P, dt); m.hp = s.hp; m.maxHp = Math.max(1, s.maxHp); m.moving = !!(s.f & 1); m.attackAnim = s.atk;
+      this.move(m, P, dt); m.hp = s.hp; m.maxHp = Math.max(1, s.maxHp); m.moving = !!(s.f & 1); m.attackAnim = s.atk; m.z = s.z;
     }
     for (const [id, m] of this.monsterMap) {
       if (m.seen < stale) { this.drop(id); continue; }
       const P = this.pick(m, rt); if (!P) continue; const s = P.s0;
-      this.move(m, P, dt); m.hp = s.hp; m.moving = !!(s.f & 1); m.attackAnim = s.atk;
+      this.move(m, P, dt); m.hp = s.hp; m.moving = !!(s.f & 1); m.attackAnim = s.atk; m.z = s.z;
     }
     // Projectiles : interpolés, puis prolongés jusqu'à leur cible
     const projs = [];
@@ -651,6 +652,7 @@ class NetClient {
       case 't': if (e[1] === 0 || e[1] === me.id) ui.toast(e[2], e[3]); break;
       case 'a': { if (e[3] && e[3] !== me.id) return; const a = narrate(g, e[1], e[2] || {}, me); if (a) ui.announce(a[0], a[1], a[2]); break; }
       case 'k': { const v = this.byId.get(e[2]); if (v) ui.feed(this.byId.get(e[1]) || null, v, new Array(e[3] || 0)); break; }
+      case 'b': { const h = this.byId.get(e[1]); if (h && h.kind === 'hero') h.bubble = { text: String(e[2]).slice(0, 80), until: g.time + 2.6 }; break; }
     }
   }
 }

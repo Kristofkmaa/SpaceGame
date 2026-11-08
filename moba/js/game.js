@@ -9,7 +9,7 @@ class Game {
     this.projectiles = []; this.zones = []; this.effects = []; this.floats = []; this.rubble = [];
     this.kills = [0, 0]; this.towersDown = [0, 0]; this.dragons = [0, 0]; this.firstBlood = false;
     this.waveN = 0; this.nextWave = CONFIG.WAVE_FIRST; this.spawnQueue = [];
-    this.visSources = [[], []]; this.visTimer = 0;
+    this.visSources = [[], []]; this.visTimer = 0; this.timers = [];
     this.camps = MAP.campSpots.map(c => ({ ...c, alive: [], respawnAt: c.first, cleared: false }));
     this.setupStructures();
     this.setupHeroes(opts);
@@ -120,6 +120,8 @@ class Game {
       for (const p of this.projectiles) if (!p.dead) this.updateProjectile(p, dt);
       for (const z of this.zones) if (!z.dead) this.updateZone(z, dt);
       this.updateDots(dt);
+      if (this.timers.length) { const due = this.timers.filter(x => x.at <= this.time); if (due.length) { this.timers = this.timers.filter(x => x.at > this.time); for (const x of due) x.fn(); } }
+      this.updateAir();
       this.separate();
       for (const u of this.heroes) { u.vx = (u.x - u.px) / dt; u.vy = (u.y - u.py) / dt; u.px = u.x; u.py = u.y; }
       this.visTimer -= dt; if (this.visTimer <= 0) { this.visTimer = 0.1; this.updateVision(); }
@@ -149,6 +151,8 @@ class Game {
       this.visSources[team] = src;
       const see = u => { for (const s of src) { const r = s.r + u.radius; if (Utils.dist2(s.x, s.y, u.x, u.y) <= r * r) return true; } return false; };
       for (const h of this.heroes) if (h.team !== team) h.vis[team] = !h.dead && see(h);
+      // Flair de Louve : les ennemis blessés sont révélés à toute son équipe
+      for (const l of this.heroes) if (!l.dead && l.team === team && l.def.passive === 'scent') for (const e of this.heroes) if (!e.dead && e.team !== team && e.hp / e.maxHp < 0.4 && Utils.dist(l.x, l.y, e.x, e.y) < 1600) e.vis[team] = true;
       for (const m of this.minions) if (m.team !== team) m.vis[team] = see(m);
       for (const m of this.monsters) m.vis[team] = see(m);
     }
@@ -198,7 +202,9 @@ class Game {
   }
   updateMonster(m, dt) {
     const t = this.time; m.attackCd -= dt; m.moving = false;
+    if (m.disp) { this.updateDisp(m, dt); return; }
     if (m.stunned(t)) return;
+    if (this.flee(m, dt)) return;
     const taunt = m.taunted(t); if (taunt) m.target = taunt;
     if (m.resetting) {
       m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.25 * dt);
@@ -257,7 +263,10 @@ class Game {
     if (Utils.dist(h.x, h.y, f.x, f.y) < CONFIG.FOUNTAIN_R) { h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.1 * dt); h.mana = Math.min(h.maxMana, h.mana + h.maxMana * 0.1 * dt); }
     const ef = MAP.fountains[1 - h.team];
     if (Utils.dist(h.x, h.y, ef.x, ef.y) < CONFIG.FOUNTAIN_R + 60) { h.zapped = t; this.damage(null, h, 800 * dt, 'true'); if (h.dead) return; }
+    const P = h.passive; if (P && P.tick) P.tick(this, h, dt);
+    if (h.dead) return;
     if (h.bot) h.bot.update(dt);
+    if (h.disp) { this.updateDisp(h, dt); return; }
     if (h.recall) {
       if (t >= h.recall.end) { h.recall = null; this.fx('teleport', { x: h.x, y: h.y, dur: 0.6, team: h.team }); h.x = h.px = f.x + Utils.rand(-40, 40); h.y = h.py = f.y + Utils.rand(-40, 40); h.order = null; h.path = null; this.fx('teleport', { x: h.x, y: h.y, dur: 0.8, team: h.team }); this.sfx('recallEnd', h.x, h.y); }
       return;
@@ -265,15 +274,16 @@ class Game {
     if (h.dash) { this.updateDash(h, dt); return; }
     if (h.channel) { if (h.stunned(t)) this.endChannel(h, true); else { this.updateChannel(h, dt); return; } }
     if (h.stunned(t)) return;
+    if (this.flee(h, dt)) return;
     const taunt = h.taunted(t);
-    if (taunt) { if (this.inAttackRange(h, taunt)) this.tryAttack(h, taunt); else this.moveToward(h, taunt.x, taunt.y, dt, h.st.range + h.radius + taunt.radius - 6); return; }
+    if (taunt) { if (this.inAttackRange(h, taunt)) this.tryAttack(h, taunt); else this.moveToward(h, taunt.x, taunt.y, dt, h.atkRange() + h.radius + taunt.radius - 6); return; }
     this.executeOrder(h, dt);
   }
   executeOrder(h, dt) {
     let o = h.order;
     if (o && o.target && (o.target.dead || (o.target.team !== h.team && !this.isTargetable(o.target, h.team)) || (o.target.vis && o.target.team !== h.team && !o.target.vis[h.team] && o.target.kind !== 'tower'))) o = h.order = null;
     if (!o) {
-      const e = this.nearestAttackable(h, h.st.range + h.radius + 6);
+      const e = this.nearestAttackable(h, h.atkRange() + h.radius + 6);
       if (e) this.tryAttack(h, e);
       return;
     }
@@ -281,7 +291,7 @@ class Game {
     else if (o.type === 'attack') {
       const tg = o.target;
       if (this.inAttackRange(h, tg)) this.tryAttack(h, tg);
-      else this.chase(h, tg, h.st.range + h.radius + tg.radius - 6, dt);
+      else this.chase(h, tg, h.atkRange() + h.radius + tg.radius - 6, dt);
     } else if (o.type === 'cast') {
       const ab = ABILITIES[h.def.abilities[o.slot]], tg = o.target;
       if (Utils.dist(h.x, h.y, tg.x, tg.y) <= ab.range + tg.radius + 5) { h.order = null; this.castAbility(h, o.slot, tg.x, tg.y, tg); }
@@ -314,20 +324,25 @@ class Game {
     for (const s of this.structures()) check(s);
     return best;
   }
-  inAttackRange(h, tg) { return Utils.dist(h.x, h.y, tg.x, tg.y) <= h.st.range + h.radius + tg.radius; }
+  inAttackRange(h, tg) { return Utils.dist(h.x, h.y, tg.x, tg.y) <= h.atkRange() + h.radius + tg.radius; }
   tryAttack(h, tg) {
     h.angle = Utils.lerpAngle(h.angle, Utils.angleTo(h.x, h.y, tg.x, tg.y), 0.5);
     if (h.attackCd > 0) return;
     h.attackCd = 1 / h.st.as; h.attackAnim = this.time;
-    if (h.def.ranged) { this.homing(h, tg, { speed: 1000, visual: h.def.projectile, onHit: u => this.basicHit(h, u) }); this.sfx({ bullet: 'rifle', spark: 'sparkShot', ember: 'flameShot' }[h.def.projectile] || 'dart', h.x, h.y); }
-    else { this.basicHit(h, tg); this.fx('slash', { x: tg.x, y: tg.y, angle: h.angle, dur: 0.2 }); this.sfx(h.heroId === 'crocs' ? 'swipe' : 'hammer', h.x, h.y); }
+    const P = h.passive, gun = !h.def.ranged && P && P.range && P.range(h) > 0;
+    if (h.def.ranged || gun) { const vis = gun ? 'bullet' : h.def.projectile; this.homing(h, tg, { speed: gun ? 1600 : 1000, visual: vis, onHit: u => this.basicHit(h, u) }); this.sfx({ bullet: 'rifle', spark: 'sparkShot', ember: 'flameShot' }[vis] || 'dart', h.x, h.y); if (gun) this.fx('muzzle', { x: h.x, y: h.y, angle: h.angle, dur: 0.12 }); }
+    else { this.basicHit(h, tg); this.fx('slash', { x: tg.x, y: tg.y, angle: h.angle, dur: 0.2, big: !!h.def.blade }); this.sfx(h.def.blade ? 'swipe' : h.def.claws ? 'swipe' : 'hammer', h.x, h.y); }
   }
   basicHit(h, tg) {
-    let dmg = h.st.ad, crit = false;
-    if (h.st.crit && Math.random() < h.st.crit) { dmg *= h.st.critMult; crit = true; }
-    if (h.empower && h.empower.until >= this.time) { dmg += h.empower.bonus; h.empower = null; this.fx('impact', { x: tg.x, y: tg.y, size: 20 }); }
-    this.damage(h, tg, dmg, 'phys', { basic: true, crit });
+    const P = h.passive, o = { dmg: h.st.ad, crit: !!h.st.crit && Math.random() < h.st.crit, bonus: 0, bonusType: 'magic' };
+    if (P && P.preBasic) P.preBasic(this, h, tg, o);
+    let dmg = o.dmg * (o.crit ? h.st.critMult : 1), emp = null;
+    if (h.empower && h.empower.until >= this.time) { emp = h.empower; dmg += emp.bonus; h.empower = null; this.fx('impact', { x: tg.x, y: tg.y, size: 24 }); }
+    this.damage(h, tg, dmg, 'phys', { basic: true, crit: o.crit });
+    if (o.bonus && !tg.dead) this.damage(h, tg, o.bonus, o.bonusType, { proc: true });
+    if (emp && emp.onHit && !tg.dead) emp.onHit(tg);
     if (h.hasBuff('red') && !tg.dead) { this.dot(tg, 'burn', 8 + 2 * h.level, 3, h); this.slow(tg, 0.1, 1.5); }
+    if (P && P.onBasic && !tg.dead) P.onBasic(this, h, tg);
   }
   moveToward(u, tx, ty, dt, stop, mult = 1) {
     const t = this.time;
@@ -347,6 +362,7 @@ class Game {
   // ---------- Ordres ----------
   issueMove(h, x, y) {
     if (h.dead) return;
+    x = Utils.clamp(x, 0, CONFIG.W); y = Utils.clamp(y, 0, CONFIG.H);
     if (h.recall) h.recall = null;
     if (h.channel && h.channel.cancelOnMove) this.endChannel(h, true);
     const prev = h.order;
@@ -362,7 +378,8 @@ class Game {
   }
   issueStop(h) { h.order = null; if (h.channel && h.channel.cancelOnMove) this.endChannel(h, true); }
   startRecall(h) { if (h.dead || h.recall || h.dash || h.channel) return; h.order = null; h.recall = { start: this.time, end: this.time + CONFIG.RECALL_TIME }; this.sfx('recall', h.x, h.y); }
-  canCast(h, slot) { const r = h.ranks[slot]; if (!r || h.cds[slot] > 0) return false; return h.mana >= ABILITIES[h.def.abilities[slot]].cost[r - 1]; }
+  costOf(h, slot) { const r = h.ranks[slot]; return h.pas.free > this.time ? 0 : ABILITIES[h.def.abilities[slot]].cost[r - 1]; }
+  canCast(h, slot) { const r = h.ranks[slot]; if (!r || h.cds[slot] > 0 || h.silenced(this.time) || h.feared(this.time)) return false; return h.mana >= this.costOf(h, slot); }
   castFail(h, msg) { if (msg && this.watched(h)) { this.notify(h, msg, 'warn'); this.sfxFor(h, 'error'); } return false; }
   findAbilityTarget(h, ab, x, y) {
     if (ab.aim === 'ally') { let best = null, bd = 170; for (const a of this.heroes) { if (a.dead || a.team !== h.team) continue; const d = Utils.dist(a.x, a.y, x, y); if (d < bd && Utils.dist(h.x, h.y, a.x, a.y) <= ab.range + 40) { bd = d; best = a; } } return best || h; }
@@ -372,11 +389,12 @@ class Game {
   }
   castAbility(h, slot, x, y, forced) {
     const t = this.time;
-    if (h.dead || h.stunned(t) || h.dash || (h.channel && !h.channel.cancelOnMove) || h.taunted(t)) return false;
+    if (h.dead || h.stunned(t) || h.dash || h.disp || (h.channel && !h.channel.cancelOnMove) || h.taunted(t) || h.feared(t)) return false;
     const r = h.ranks[slot];
     if (!r) return this.castFail(h, 'Compétence pas encore apprise : Ctrl + touche pour l’améliorer');
+    if (h.silenced(t)) return this.castFail(h, 'Réduit au silence');
     if (h.cds[slot] > 0) return this.castFail(h, 'Compétence pas encore prête');
-    const ab = ABILITIES[h.def.abilities[slot]], cost = ab.cost[r - 1];
+    const ab = ABILITIES[h.def.abilities[slot]], cost = this.costOf(h, slot);
     if (h.mana < cost) return this.castFail(h, 'Pas assez d’énergie');
     let target = null;
     if (ab.aim === 'target' || ab.aim === 'ally') {
@@ -388,14 +406,16 @@ class Game {
     if (ab.aim === 'circle') { const d = Utils.dist(h.x, h.y, x, y); if (d > ab.range) { x = h.x + (x - h.x) / d * ab.range; y = h.y + (y - h.y) / d * ab.range; } }
     if (h.recall) h.recall = null;
     if (h.channel) this.endChannel(h, true);
-    h.mana -= cost; h.cds[slot] = ab.cd[r - 1] * (1 - h.st.cdr);
+    h.mana -= cost; h.cds[slot] = ab.cd[r - 1] * (1 - h.st.cdr); if (!cost && h.pas.free) h.pas.free = 0;
     if (Utils.dist(h.x, h.y, x, y) > 1) h.angle = Utils.angleTo(h.x, h.y, x, y);
     h.castAnim = t;
-    ab.cast(this, h, r, x, y, target);
+    if (ab.cast(this, h, r, x, y, target) === false) { h.cds[slot] = 0; h.mana += cost; return false; }
+    const P = h.passive; if (P && P.onCast) P.onCast(this, h, slot);
+    if (slot === 3) this.bark(h, 'ult', true);
     return true;
   }
   useSpell(h, i, x, y) {
-    if (h.dead || h.stunned(this.time) || h.dash) return false;
+    if (h.dead || h.stunned(this.time) || h.dash || h.disp) return false;
     if (h.spellCds[i] > 0) return this.castFail(h, 'Sort pas encore prêt');
     if (h.recall) h.recall = null;
     if (h.channel && h.channel.cancelOnMove) this.endChannel(h, true);
@@ -529,9 +549,70 @@ class Game {
   // ---------- États ----------
   stun(u, d) { if (u.kind !== 'hero' && u.kind !== 'minion' && u.kind !== 'monster') return; if (u.def && u.def.epic) d *= 0.3; u.status.stun = Math.max(u.status.stun, this.time + d); if (u.kind === 'hero') { if (u.recall) u.recall = null; if (u.channel) this.endChannel(u, true); } this.fx('stun', { target: u, dur: d }); }
   root(u, d) { u.status.root = Math.max(u.status.root, this.time + d); if (u.recall) u.recall = null; this.fx('root', { target: u, dur: d }); }
-  slow(u, pct, d) { u.status.slows.push({ pct, until: this.time + d }); }
+  slow(u, pct, d) { if (u.def && u.def.epic) pct *= 0.5; u.status.slows.push({ pct, until: this.time + d }); }
+  silence(u, d, quiet) { if (u.kind !== 'hero') return; const was = u.status.silence > this.time; u.status.silence = Math.max(u.status.silence, this.time + d); if (u.channel) this.endChannel(u, true); if (u.recall) u.recall = null; if (!quiet || !was) this.fx('silence', { target: u, dur: quiet ? 0.6 : d }); }
+  fear(u, src, d) {
+    if (u.kind !== 'hero' && u.kind !== 'minion') return; // les monstres de la jungle ne fuient pas : ils gardent leur camp
+    u.status.fear = { src, x: src.x, y: src.y, until: this.time + d };
+    if (u.kind === 'hero') { if (u.recall) u.recall = null; if (u.channel) this.endChannel(u, true); }
+    this.fx('fear', { target: u, dur: d });
+  }
+  flee(u, dt) {
+    const f = u.feared(this.time); if (!f) return false;
+    const sx = f.src && !f.src.dead ? f.src.x : f.x, sy = f.src && !f.src.dead ? f.src.y : f.y, a = Utils.angleTo(sx, sy, u.x, u.y);
+    this.moveToward(u, u.x + Math.cos(a) * 200, u.y + Math.sin(a) * 200, dt, 0, 0.85); return true;
+  }
+  // Déplacement forcé (attraction, projection) : la cible ne peut rien faire pendant le trajet
+  displace(u, x, y, dur, onEnd) {
+    if (!u || u.dead || u.kind === 'tower' || u.kind === 'inhib' || u.kind === 'nexus' || (u.def && u.def.epic)) { if (onEnd) onEnd(); return; }
+    const p = MAP.freePoint(Utils.clamp(x, 40, CONFIG.W - 40), Utils.clamp(y, 40, CONFIG.H - 40));
+    u.disp = { x0: u.x, y0: u.y, x1: p.x, y1: p.y, t: 0, dur: Math.max(0.05, dur), onEnd };
+    u.status.stun = Math.max(u.status.stun, this.time + dur);
+    if (u.kind === 'hero') { u.dash = null; if (u.recall) u.recall = null; if (u.channel) this.endChannel(u, true); u.order = null; }
+  }
+  updateDisp(u, dt) {
+    const d = u.disp; d.t += dt; const k = Math.min(1, d.t / d.dur);
+    u.x = d.x0 + (d.x1 - d.x0) * k; u.y = d.y0 + (d.y1 - d.y0) * k; u.moving = true;
+    if (k >= 1) { u.disp = null; MAP.resolve(u); u.px = u.x; u.py = u.y; if (d.onEnd) d.onEnd(); }
+  }
+  pull(u, x, y, speed = 1300, onEnd) { this.displace(u, x, y, Utils.dist(u.x, u.y, x, y) / speed, onEnd); }
+  knockback(u, fx, fy, dist, dur = 0.3, onEnd) { const a = Utils.angleTo(fx, fy, u.x, u.y); this.displace(u, u.x + Math.cos(a) * dist, u.y + Math.sin(a) * dist, dur, onEnd); }
+  knockup(u, d) {
+    if (u.kind !== 'hero' && u.kind !== 'minion' && u.kind !== 'monster') return;
+    if (u.def && u.def.epic) { this.stun(u, d); return; }
+    this.stun(u, d); u.air = { t0: this.time, dur: d };
+  }
+  updateAir() {
+    const t = this.time;
+    const f = u => { if (!u.air) return; const k = (t - u.air.t0) / u.air.dur; if (k >= 1 || u.dead) { u.air = null; u.z = 0; } else u.z = Math.sin(k * Math.PI) * 45; };
+    for (const h of this.heroes) f(h); for (const m of this.minions) f(m); for (const m of this.monsters) f(m);
+  }
+  // Dégâts subis augmentés (marque, flaque…) : src = null pour toutes les sources
+  amp(u, pct, d, src = null, key = 'amp') { const s = u.status; s.amps = s.amps.filter(a => a.until > this.time && a.key !== key); s.amps.push({ pct, until: this.time + d, src, key }); }
+  hot(u, total, d, src) { u.status.regen.push({ rate: total / d, until: this.time + d, src }); }
+  after(sec, fn) { this.timers.push({ at: this.time + sec, fn }); }
+  // Charges électriques de Néon : à trois, la cible grille
+  addCharge(u, src) {
+    const s = u.status, t = this.time;
+    if (u.dead || s.chargeImmune > t || (u.kind !== 'hero' && u.kind !== 'minion' && u.kind !== 'monster')) return;
+    if (!s.charges || s.charges.until < t || s.charges.src !== src) s.charges = { n: 0, src, until: 0 };
+    s.charges.n++; s.charges.until = t + 6;
+    this.fx('static', { target: u, dur: 0.6, n: s.charges.n });
+    if (s.charges.n >= 3) {
+      s.charges = null; s.chargeImmune = t + 6;
+      this.stun(u, 1); this.fx('lightning', { x1: u.x, y1: u.y - 300, x2: u.x, y2: u.y, dur: 0.35, color: '#9fe8ff' }); this.sfx('zap', u.x, u.y);
+      this.damage(src, u, 30 + 12 * src.level + 0.3 * src.st.ap, 'magic', { proc: true });
+    }
+  }
+  bark(h, kind, force) {
+    const v = h.def.voice && h.def.voice[kind]; if (!v || !v.length) return;
+    if (!force && h.bubble && h.bubble.until > this.time) return;
+    const text = Utils.pick(v); h.bubble = { text, until: this.time + 2.6 };
+    if (this.net) this.net.event(['b', h.id, text]);
+  }
   haste(u, pct, d) { u.status.hastes.push({ pct, until: this.time + d }); }
-  shield(u, amt, d) { u.status.shields.push({ amt, until: this.time + d }); this.fx('shield', { target: u, dur: d }); }
+  shield(u, amt, d, src) { amt *= this.healMod(src, u); u.status.shields.push({ amt, until: this.time + d }); this.fx('shield', { target: u, dur: d }); }
+  healMod(src, u) { const P = src && src.kind === 'hero' ? src.passive : null; return P && P.healMod ? P.healMod(this, src, u) : 1; }
   taunt(u, src, d) {
     if (u.kind === 'hero') { u.status.taunt = { src, until: this.time + d }; if (u.recall) u.recall = null; if (u.channel) this.endChannel(u, true); }
     else if (u.kind === 'minion') { u.aggro = src; u.aggroUntil = this.time + d; u.target = src; }
@@ -541,6 +622,7 @@ class Game {
   dot(u, kind, dps, dur, src) { const cur = u.status[kind]; if (cur && cur.until > this.time && cur.dps > dps) { cur.until = this.time + dur; return; } u.status[kind] = { dps, until: this.time + dur, src, tick: 0.5 }; }
   updateDots(dt) {
     const t = this.time;
+    for (const h of this.heroes) { const r = h.status.regen; if (!r.length || h.dead) continue; h.status.regen = r.filter(x => x.until > t); for (const x of h.status.regen) h.hp = Math.min(h.maxHp, h.hp + x.rate * dt); }
     const tick = u => { for (const kind of ['burn', 'bleed']) { const s = u.status[kind]; if (!s) continue; if (s.until <= t) { u.status[kind] = null; continue; } s.tick -= dt; if (s.tick <= 0) { s.tick += 0.5; this.damage(s.src && !s.src.dead ? s.src : null, u, s.dps * 0.5, kind === 'burn' ? 'magic' : 'phys', { dot: true }); } } };
     for (const h of this.heroes) if (!h.dead) tick(h);
     for (const m of this.minions) if (!m.dead && (m.status.burn || m.status.bleed)) tick(m);
@@ -554,7 +636,7 @@ class Game {
   }
   heal(src, u, amt) {
     if (u.dead) return 0;
-    const a = amt * (1 + (src && src.st && src.st.healPower || 0)), before = u.hp;
+    const a = amt * (1 + (src && src.st && src.st.healPower || 0)) * this.healMod(src, u), before = u.hp;
     u.hp = Math.min(u.maxHp, u.hp + a);
     const got = u.hp - before;
     if (got >= 1) { if (this.watched(u)) this.float('+' + Math.round(got), u.x, u.y, '#8cff7a', false, u); if (this.watched(src) && src !== u) this.float('+' + Math.round(got), u.x, u.y, '#8cff7a', false, src); }
@@ -566,6 +648,7 @@ class Game {
     if (!tg || tg.dead) return 0;
     if (src && src.team === tg.team) return 0;
     if ((tg.kind === 'tower' || tg.kind === 'inhib' || tg.kind === 'nexus') && !this.isTargetable(tg, 1 - tg.team)) return 0;
+    if (tg.status.invuln > this.time) return 0;
     let dmg = amount;
     if (src && src.kind === 'hero' && src.team < 2) dmg *= 1 + 0.06 * this.dragons[src.team];
     if (src && src.kind === 'minion' && (tg.kind !== 'minion') && this.heroes.some(h => !h.dead && h.team === src.team && h.hasBuff('titan') && Utils.dist(h.x, h.y, src.x, src.y) < 800)) dmg *= 1.5;
@@ -575,9 +658,13 @@ class Game {
       if (src && src.kind === 'minion') dmg *= src.def.siege ? 1.5 : 1;
       if (!this.alliedMinionsNear(1 - tg.team, tg.x, tg.y, 600)) dmg *= 0.4;
     }
-    if (tg.status.dr && tg.status.dr.until > this.time) dmg *= 1 - tg.status.dr.pct;
     const t = this.time;
+    if (tg.status.amps.length) for (const a of tg.status.amps) if (a.until > t && (!a.src || a.src === src)) dmg *= 1 + a.pct;
+    if (tg.status.parry && tg.status.parry.until > t && src) { tg.status.parry.blocked += dmg; if (src.kind === 'hero') tg.status.parry.hitters.add(src); this.fx('impact', { x: tg.x, y: tg.y, size: 18 }); this.sfx('clank', tg.x, tg.y); return 0; }
+    if (tg.kind === 'hero' && tg.passive && tg.passive.modTaken) { dmg = tg.passive.modTaken(this, tg, src, dmg, opt); if (dmg <= 0) return 0; }
+    if (tg.status.dr && tg.status.dr.until > this.time) dmg *= 1 - tg.status.dr.pct;
     if (tg.status.shields.length) for (const s of tg.status.shields) { if (s.until <= t || dmg <= 0) continue; const a = Math.min(s.amt, dmg); s.amt -= a; dmg -= a; }
+    if (tg.status.undying > t && tg.hp - dmg < 1) dmg = Math.max(0, tg.hp - 1);
     tg.hp -= dmg; tg.lastHit = t;
     if (tg.kind === 'hero') { if (tg.recall) { tg.recall = null; this.notify(tg, 'Retour interrompu', 'warn'); } if (src && src.kind === 'hero') tg.damagedBy.set(src.id, t); if (opt.basic && tg.st.thorns && src && !src.dead) this.damage(tg, src, dmg * tg.st.thorns, 'magic'); }
     if (tg.kind === 'monster' && src) this.aggroCamp(tg, src.kind === 'turretZone' ? null : src);
@@ -592,7 +679,9 @@ class Game {
       if (this.watched(tg)) this.float(txt, tg.x, tg.y, '#ff6a5a', opt.crit || dmg > 150, tg);
       if (this.watched(src)) this.float(txt, tg.x, tg.y, opt.crit ? '#ff9a3a' : type === 'magic' ? '#9fd8ff' : type === 'true' ? '#ffffff' : '#ffd27a', opt.crit || dmg > 150, src);
     }
-    if (tg.hp <= 0) { tg.hp = 0; this.kill(tg, src); }
+    if (src && src.kind === 'hero' && src.passive && src.passive.onDealt && tg.team !== src.team) src.passive.onDealt(this, src, tg, dmg, opt);
+    if (tg.kind === 'hero' && tg.passive && tg.passive.onTaken && !tg.dead) tg.passive.onTaken(this, tg, src, dmg, opt);
+    if (tg.hp <= 0 && !tg.dead) { tg.hp = 0; this.kill(tg, src); }
     return dmg;
   }
   callForHelp(src, victim) {
@@ -604,6 +693,10 @@ class Game {
     u.dead = true;
     const t = this.time;
     const killerHero = src && src.kind === 'hero' ? src : null;
+    if (killerHero && killerHero.passive && killerHero.passive.onKill) killerHero.passive.onKill(this, killerHero, u);
+    const burn = u.status && u.status.burn;
+    if (burn && burn.until > t && burn.src && burn.src.kind === 'hero' && burn.src.passive && burn.src.passive.onBurnDeath) burn.src.passive.onBurnDeath(this, burn.src, u);
+    if (u.kind === 'minion' || u.kind === 'monster' || u.kind === 'hero') for (const h of this.heroes) if (!h.dead && h.passive && h.passive.onDeathNear && Utils.dist(h.x, h.y, u.x, u.y) < 600) h.passive.onDeathNear(this, h, u);
     if (u.kind === 'minion') {
       if (killerHero) { const gold = u.def.gold + Math.floor(t / 90); killerHero.gold += gold; killerHero.cs++; if (this.watched(killerHero)) { this.float('+' + gold, u.x, u.y, '#ffd34d', true, killerHero); this.sfxFor(killerHero, 'gold'); } }
       this.shareXp(1 - u.team, u.x, u.y, u.def.xp);
@@ -654,8 +747,9 @@ class Game {
     const t = this.time;
     v.d++; v.respawnAt = t + respawnTime(v.level, t);
     v.order = null; v.dash = null; v.channel = null; v.recall = null; v.empower = null; v.z = 0;
-    v.status = { stun: 0, root: 0, slows: [], hastes: [], shields: [], taunt: null, burn: null, bleed: null };
+    v.status = freshStatus(); v.disp = null; v.air = null;
     v.buffs = []; v.potions = []; v.scale = 1; v.recompute();
+    this.bark(v, 'death', true);
     let killer = src && src.kind === 'hero' ? src : null;
     const recent = [...v.damagedBy.entries()].filter(([, tt]) => t - tt <= CONFIG.ASSIST_WINDOW);
     if (!killer && recent.length) { recent.sort((a, b) => b[1] - a[1]); killer = this.heroes.find(h => h.id === recent[0][0]) || null; }
@@ -669,6 +763,7 @@ class Game {
     v.damagedBy.clear();
     this.fx('heroDeath', { x: v.x, y: v.y, dur: 1.4, team: v.team }); this.sfx('death', v.x, v.y);
     this.feedKill(killer, v, assisters);
+    if (killer) this.bark(killer, 'kill', true);
     const fb = !!killer && !this.firstBlood; if (fb) this.firstBlood = true;
     this.say('kill', { k: killer ? killer.id : 0, v: v.id, fb, multi: killer ? killer.multi.n : 0 });
   }
@@ -677,14 +772,16 @@ class Game {
     h.dead = false; h.x = h.px = f.x + Utils.rand(-40, 40); h.y = h.py = f.y + Utils.rand(-40, 40);
     h.hp = h.maxHp; h.mana = h.maxMana; h.order = null; h.attackCd = 0;
     this.fx('teleport', { x: h.x, y: h.y, dur: 0.9, team: h.team });
-    this.sfxFor(h, 'respawn');
+    this.sfxFor(h, 'respawn'); this.bark(h, 'respawn');
   }
 
   // ---------- Sbires ----------
   updateMinion(m, dt) {
     const t = this.time;
     m.attackCd -= dt; m.moving = false;
+    if (m.disp) { this.updateDisp(m, dt); return; }
     if (m.stunned(t)) return;
+    if (this.flee(m, dt)) return;
     m.retarget -= dt;
     if (m.retarget <= 0 || !this.validMinionTarget(m, m.target)) { m.retarget = 0.35; m.target = this.minionPickTarget(m); }
     const tg = m.target;
@@ -743,9 +840,9 @@ class Game {
   // ---------- Collisions ----------
   separate() {
     const us = [];
-    for (const h of this.heroes) if (!h.dead && !h.dash) us.push(h);
-    for (const m of this.minions) if (!m.dead) us.push(m);
-    for (const m of this.monsters) if (!m.dead) us.push(m);
+    for (const h of this.heroes) if (!h.dead && !h.dash && !h.disp) us.push(h);
+    for (const m of this.minions) if (!m.dead && !m.disp) us.push(m);
+    for (const m of this.monsters) if (!m.dead && !m.disp) us.push(m);
     // Grille spatiale pour limiter les paires
     const B = 80, cells = new Map();
     for (const u of us) { const k = Math.floor(u.x / B) * 1000 + Math.floor(u.y / B); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(u); }

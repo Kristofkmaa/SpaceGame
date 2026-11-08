@@ -55,108 +55,193 @@ const M3 = {
     const T = TEAM_INFO[team].color, G = (...a) => this.group(...a);
     let P;
     switch (id) {
-      case 'briseroc': {
-        P = this.humanoid({ hip: 2.0, torsoH: 2.5, torsoW: 2.7, torsoD: 1.9, legW: 0.95, armW: 0.85, armL: 2.2, headR: 0.75, top: '#6b4a32', pants: '#3e3428', skin: '#b58662', belt: '#2a2016', noHead: true });
-        P.head.add(this.box(1.5, 1.5, 1.5, '#8d8678', { m: 0.4, r: 0.5 }));
-        P.head.add(this.at(this.box(0.08, 0.28, 1.1, '#ffb347', { e: '#ff9a2a', ei: 1.4 }), 0.77, 0, 0));
-        P.head.add(this.at(this.box(1.52, 0.3, 0.25, T), 0, 0.62, 0));
-        P.torso.add(this.at(this.box(1.95, 0.5, 0.5, T), 0, 0.3, 0));
-        for (const s of [-1, 1]) { const tire = this.tor(0.62, 0.3, '#1f1c18'); tire.position.set(0, 2.0 + 2.4, s * 1.6); tire.rotation.y = Math.PI / 2; P.body.add(tire); }
-        const hammer = G(this.at(this.cyl(0.14, 0.14, 3.4, '#5a4630'), 0, 0, 0, 0, 0, 0), this.at(this.box(1.0, 1.3, 1.3, '#8f8f88', { m: 0.5, r: 0.4 }), 0, 1.7, 0), this.at(this.cyl(0.32, 0.32, 0.6, '#c96f2b', 8, { e: '#7a3a10', ei: 0.4 }), 0, 1.7, 0.75, Math.PI / 2, 0, 0));
-        hammer.position.set(0.3, -0.2, 0); hammer.rotation.z = -1.25; P.handR.add(hammer); P.weapon = hammer;
+      case 'rouille': {
+        P = this.humanoid({ hip: 1.6, torsoH: 2.3, torsoW: 2.5, torsoD: 2.0, legW: 0.85, armW: 0.75, armL: 1.9, headR: 0.68, top: '#8a5e4a', pants: '#4a3a2e', skin: '#d0a888', sleeve: '#8a5e4a', noHead: true, belt: '#2a1e14' });
+        P.head.add(this.sph(0.7, '#d0a888', {}, 8, 6));
+        P.head.add(this.at(this.sph(0.42, '#e8e4dc', {}, 8, 6), -0.45, 0.45, 0));
+        for (const z of [-0.26, 0.26]) P.head.add(this.at(this.cyl(0.2, 0.2, 0.16, '#3a6a6a', 8, { m: 0.5, r: 0.3, e: '#1a4a4a', ei: 0.4 }), 0.52, 0.32, z, 0, 0, Math.PI / 2));
+        P.head.add(this.at(this.box(0.1, 0.12, 0.9, '#2a2420'), 0.55, 0.32, 0));
+        P.head.add(this.at(this.tor(0.62, 0.18, T), 0, -0.55, 0, Math.PI / 2, 0, 0));
+        P.torso.add(this.at(this.box(0.15, 2.0, 1.9, '#5a3a22'), 1.02, -0.3, 0));
+        // Bras droit : pince de grue hydraulique
+        P.armR.add(this.at(this.cyl(0.55, 0.6, 1.4, '#c8a020', 8, { m: 0.5, r: 0.4 }), 0, -0.9, 0));
+        P.armR.add(this.at(this.cyl(0.18, 0.18, 1.8, '#9a9a92', 6, { m: 0.7, r: 0.3 }), 0.4, -1.2, 0.35));
+        const claw = G(this.box(0.9, 0.5, 0.9, '#5a5a52', { m: 0.6, r: 0.4 }));
+        for (const s of [-1, 1]) claw.add(this.at(this.box(0.3, 1.4, 0.25, '#7a7a72', { m: 0.6, r: 0.4 }), 0.35, -0.6, s * 0.35, 0, 0, s * 0.25));
+        claw.position.set(0, -0.2, 0); P.handR.add(claw); P.weapon = claw;
+        const pile = G(this.box(1.0, 0.8, 1.4, '#6a5a44'), this.at(this.cyl(0.4, 0.4, 0.3, '#2a2622', 8), 0, 0.6, 0.2, Math.PI / 2, 0, 0), this.at(this.box(0.3, 1.2, 0.3, '#8a4a2a', { m: 0.4 }), -0.1, 0.7, -0.4, 0.3, 0, 0.4));
+        pile.position.set(-1.25, 3.0, 0); P.body.add(pile);
         break;
       }
-      case 'vipere': {
-        P = this.humanoid({ hip: 1.9, torsoH: 2.0, torsoW: 1.7, legW: 0.62, armW: 0.55, armL: 1.9, headR: 0.62, top: '#5c5a44', pants: '#4a4232', skin: '#7a5a40', noHead: true });
-        const cloak = this.cone(1.35, 3.6, '#4b4a38', 7); cloak.position.set(-0.35, 2.6, 0); P.body.add(cloak);
-        P.head.add(this.sph(0.66, '#3f3f30', {}, 8, 6));
-        P.head.add(this.at(this.sph(0.5, '#1a1612', {}, 8, 6), 0.25, -0.05, 0));
-        for (const z of [-0.2, 0.2]) P.head.add(this.at(this.sph(0.15, '#56d0c8', { e: '#2ab8b0', ei: 1.5 }, 6, 4), 0.62, 0.05, z));
-        P.head.add(this.at(this.tor(0.55, 0.16, T), 0, -0.45, 0, Math.PI / 2, 0, 0));
-        const rifle = G(this.at(this.cyl(0.09, 0.09, 4.2, '#2b2722'), 1.5, 0, 0, 0, 0, Math.PI / 2), this.at(this.box(1.2, 0.35, 0.28, '#5a3d24'), -0.4, -0.12, 0), this.at(this.box(0.7, 0.22, 0.22, '#3a3a36', { m: 0.6 }), 0.6, 0.25, 0));
+      case 'goudron': {
+        P = this.humanoid({ hip: 2.2, torsoH: 2.4, torsoW: 1.6, legW: 0.55, armW: 0.5, armL: 2.25, headR: 0.6, top: '#221c18', pants: '#1a1614', skin: '#8a6a50', sleeve: '#221c18', boots: '#14100c', noHead: true });
+        const robe = this.cone(1.35, 3.4, '#1e1814', 8, { r: 0.25, m: 0.3 }); robe.position.set(0, 1.75, 0); P.body.add(robe);
+        P.head.add(this.sph(0.72, '#1e1814', { r: 0.3, m: 0.3 }, 8, 6));
+        P.head.add(this.at(this.box(0.2, 0.6, 0.7, '#0a0806'), 0.6, -0.1, 0));
+        for (const z of [-0.15, 0.15]) P.head.add(this.at(this.sph(0.07, '#ffb347', { e: '#ff8a2a', ei: 2 }, 6, 4), 0.68, 0.0, z));
+        P.head.add(this.at(this.cone(0.3, 0.7, '#1e1814', 6, { r: 0.25, m: 0.3 }), -0.3, 0.55, 0, 0, 0, 0.8));
+        for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; P.body.add(this.at(this.sph(0.14, '#9a9282', { m: 0.6, r: 0.3 }, 6, 4), Math.cos(a) * 0.75, 4.35 - Math.abs(Math.sin(a)) * 0.2, Math.sin(a) * 0.75)); }
+        P.body.add(this.at(this.box(0.1, 0.5, 0.35, T), 0.62, 4.0, 0));
+        for (const hand of [P.handL, P.handR]) hand.add(this.box(0.62, 0.62, 0.62, '#c8b89a'));
+        break;
+      }
+      case 'louve': {
+        P = this.humanoid({ hip: 1.5, torsoH: 1.8, torsoW: 1.6, torsoD: 1.2, legW: 0.6, armW: 0.5, armL: 2.1, headR: 0.55, top: '#5a4030', pants: '#3a2e22', skin: '#c8a080', sleeve: '#c8a080', noHead: true });
+        P.body.rotation.z = -0.35; P.body.position.y = -0.15;
+        P.head.add(this.box(1.0, 0.8, 0.8, '#e0d8c0'));
+        P.head.add(this.at(this.box(0.7, 0.4, 0.5, '#d8d0b8'), 0.75, -0.18, 0));
+        for (const z of [-0.2, 0.2]) P.head.add(this.at(this.sph(0.13, '#ff3a2a', { e: '#ff2010', ei: 2.2 }, 6, 4), 0.5, 0.12, z));
+        for (const z of [-0.32, 0.32]) P.head.add(this.at(this.cone(0.18, 0.6, '#d8d0b8', 4), -0.1, 0.6, z, z, 0, 0));
+        for (const x of [0.95, 1.0]) P.head.add(this.at(this.cone(0.05, 0.22, '#f0ece0', 3), x, -0.42, x > 0.97 ? 0.12 : -0.12, Math.PI, 0, 0));
+        const cloak = this.cone(1.1, 2.6, '#6a6460', 7); cloak.position.set(-0.4, 2.4, 0); cloak.rotation.z = 0.2; P.body.add(cloak);
+        for (let i = 0; i < 6; i++) P.body.add(this.at(this.cone(0.18, 0.7, '#4a4440', 4), -0.8, 2.2 + i * 0.3, (i % 2 ? 0.25 : -0.25), 0, 0, 0.9));
+        P.torso.add(this.at(this.box(1.25, 0.3, 1.65, T), 0, -0.55, 0));
+        for (const hand of [P.handL, P.handR]) hand.add(this.at(this.box(0.12, 1.1, 0.28, '#b8b8b0', { m: 0.7, r: 0.3 }), 0.3, -0.45, 0, 0, 0, Math.PI * 0.75));
+        P.weapon = P.handR.children[0];
+        break;
+      }
+      case 'silo': {
+        P = this.humanoid({ hip: 2.2, torsoH: 2.8, torsoW: 3.0, torsoD: 2.2, legW: 1.05, armW: 0.95, armL: 2.4, headR: 0.8, top: '#4a6a7a', pants: '#3a5a6a', skin: '#b08868', sleeve: '#b08868', noHead: true, belt: '#2a3a44' });
+        P.head.add(this.sph(0.82, '#b08868', {}, 8, 6));
+        P.head.add(this.at(this.cone(0.62, 1.1, '#9a9690', 6), 0.4, -0.7, 0, 0, 0, Math.PI));
+        P.head.add(this.at(this.cyl(0.8, 0.86, 0.5, '#5a4a3a', 8), 0, 0.5, 0));
+        for (const s of [-1, 1]) P.torso.add(this.at(this.box(0.25, 2.8, 0.35, '#3a5a6a'), 0.95, 0.2, s * 0.8));
+        const tank = G(this.cyl(1.3, 1.3, 3.6, '#8a5a3a', 12, { m: 0.4, r: 0.6 }), this.at(this.sph(1.3, '#8a5a3a', { m: 0.4, r: 0.6 }, 12, 6), 0, 1.8, 0), this.at(this.cyl(0.25, 0.25, 0.5, '#4a4a46', 6, { m: 0.6 }), 0, 3.2, 0), this.at(this.tor(0.4, 0.08, '#c83a2a'), 0, 3.5, 0, Math.PI / 2, 0, 0));
+        for (const y of [-1.1, 0.2, 1.4]) tank.add(this.at(this.tor(1.32, 0.09, '#4a3a2a', { m: 0.5 }), 0, y, 0, Math.PI / 2, 0, 0));
+        tank.add(this.at(this.box(0.1, 0.9, 1.4, T), 1.3, 0.6, 0));
+        tank.position.set(-1.9, 4.0, 0); P.body.add(tank);
+        const nozzle = G(this.at(this.cyl(0.16, 0.22, 1.6, '#c8a050', 8, { m: 0.7, r: 0.3 }), 0.6, -0.2, 0, 0, 0, Math.PI / 2), this.at(this.sph(0.12, '#9fd8ff', { e: '#5ab8ff', ei: 1.5 }, 6, 4), 1.45, -0.2, 0));
+        P.armR.rotation.z = Math.PI / 3; nozzle.rotation.z = -Math.PI / 3; P.handR.add(nozzle); P.weapon = nozzle; P.glow = nozzle.children[1];
+        break;
+      }
+      case 'neon': {
+        P = this.humanoid({ hip: 1.75, torsoH: 1.9, torsoW: 1.6, legW: 0.56, armW: 0.48, armL: 1.8, headR: 0.6, top: '#2a2a3a', pants: '#3a2a4a', skin: '#e0b090', boots: '#e8e0d8' });
+        for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2; P.head.add(this.at(this.cone(0.2, 0.75, '#ff7a2a', 4), Math.cos(a) * 0.35 - 0.1, 0.45, Math.sin(a) * 0.4, Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9)); }
+        P.head.add(this.at(this.box(0.3, 0.3, 1.1, '#3a3a3a', { m: 0.5 }), 0.3, 0.42, 0));
+        for (const z of [-0.25, 0.25]) P.head.add(this.at(this.cyl(0.17, 0.17, 0.1, '#7fdcff', 8, { e: '#3ab8ff', ei: 1.2 }), 0.42, 0.42, z, 0, 0, Math.PI / 2));
+        for (const s of [-1, 1]) P.torso.add(this.at(this.box(0.1, 1.9, 0.12, '#ff4ad8', { e: '#ff2ac8', ei: 1.8 }), 0.56, 0, s * 0.42));
+        P.torso.add(this.at(this.box(1.15, 0.3, 1.65, T), 0, -0.7, 0));
+        for (const leg of [P.legL, P.legR]) { leg.add(this.at(this.box(1.1, 0.18, 0.5, '#2a2a2a'), 0.12, -1.85, 0)); for (const x of [-0.3, 0.45]) leg.add(this.at(this.cyl(0.14, 0.14, 0.4, '#ff4ad8', 8, { e: '#ff2ac8', ei: 1 }), x, -1.98, 0, Math.PI / 2, 0, 0)); }
+        for (const arm of [P.armL, P.armR]) for (const y of [-0.5, -0.9, -1.3]) arm.add(this.at(this.tor(0.3, 0.06, '#c87533', { m: 0.6 }), 0, y, 0, Math.PI / 2, 0, 0));
+        const coils = [];
+        for (const z of [-0.5, 0.5]) {
+          const c = G(this.cyl(0.26, 0.34, 2.2, '#3a3026'));
+          for (let i = 0; i < 6; i++) c.add(this.at(this.tor(0.34, 0.07, '#c87533', { m: 0.6, r: 0.4 }), 0, -0.8 + i * 0.33, 0, Math.PI / 2, 0, 0));
+          c.add(this.at(this.sph(0.3, '#bfeaff', { e: '#7fdcff', ei: 2 }, 8, 6), 0, 1.3, 0));
+          c.position.set(-0.95, 3.4, z); P.body.add(c); coils.push(c);
+        }
+        P.coils = coils;
+        const glove = this.sph(0.36, '#7a8a96', { e: '#3ab8ff', ei: 0.6 }); P.handR.add(glove); P.glow = glove;
+        break;
+      }
+      case 'cendre': {
+        P = this.humanoid({ hip: 1.9, torsoH: 2.1, torsoW: 1.7, legW: 0.6, armW: 0.52, armL: 1.9, headR: 0.62, top: '#6a1a14', pants: '#4a120e', skin: '#e0c0a8', noHead: true, belt: '#c8a050' });
+        const robe = this.cone(1.25, 3.0, '#5a1410', 8); robe.position.set(0, 1.5, 0); P.body.add(robe);
+        robe.add(this.at(this.tor(1.05, 0.08, '#c8a050', { m: 0.6 }), 0, -1.2, 0, Math.PI / 2, 0, 0));
+        for (const z of [-0.42, 0.42]) { const tank = G(this.cyl(0.38, 0.38, 2.2, '#8a2a18', 10, { m: 0.3, r: 0.5 }), this.at(this.sph(0.38, '#8a2a18', { m: 0.3 }, 10, 6), 0, 1.1, 0), this.at(this.tor(0.4, 0.06, '#c8a050', { m: 0.6 }), 0, 0.3, 0, Math.PI / 2, 0, 0)); tank.position.set(-1.0, 3.0, z); P.body.add(tank); }
+        P.head.add(this.box(1.15, 1.2, 1.15, '#3a3a36', { m: 0.4 }));
+        P.head.add(this.at(this.box(0.1, 0.3, 0.85, '#ff8a2a', { e: '#ff6a10', ei: 1.6 }), 0.6, 0.05, 0));
+        P.head.add(this.at(this.cone(0.95, 1.5, '#4a100c', 8), -0.1, 0.55, 0));
+        P.head.add(this.at(this.tor(0.58, 0.14, T), 0, -0.6, 0, Math.PI / 2, 0, 0));
+        const censer = G(this.at(this.cyl(0.04, 0.04, 0.9, '#c8a050', 4), 0, -0.4, 0), this.at(this.sph(0.38, '#8a6a30', { m: 0.6, r: 0.4 }, 8, 6), 0, -0.95, 0));
+        const flame = this.cone(0.25, 0.8, '#ffb347', 5, { e: '#ff6a10', ei: 2 }); flame.position.set(0, -0.45, 0); flame.castShadow = false; censer.add(flame);
+        P.armR.rotation.z = Math.PI / 2.6; censer.rotation.z = -Math.PI / 2.6; P.handR.add(censer); P.weapon = censer; P.flame = flame; P.aimPose = true;
+        break;
+      }
+      case 'comtesse': {
+        P = this.humanoid({ hip: 1.95, torsoH: 2.0, torsoW: 1.45, legW: 0.52, armW: 0.44, armL: 1.95, headR: 0.58, top: '#5a1a2e', pants: '#3a1020', skin: '#e8ccb8', sleeve: '#5a1a2e', noHead: true });
+        const skirt = this.cone(1.55, 2.6, '#4a1426', 10); skirt.position.set(0, 1.25, 0); P.body.add(skirt);
+        skirt.add(this.at(this.tor(1.45, 0.07, '#d8b060', { m: 0.6 }), 0, -1.15, 0, Math.PI / 2, 0, 0));
+        P.torso.add(this.at(this.box(0.9, 0.35, 1.5, '#e8e0d0'), 0.15, 0.8, 0));
+        P.head.add(this.sph(0.6, '#e8ccb8', {}, 8, 6));
+        P.head.add(this.at(this.sph(0.5, '#2a1a14', {}, 8, 6), -0.2, 0.35, 0));
+        P.head.add(this.at(this.cyl(0.25, 0.3, 0.6, '#2a1a14', 8), -0.35, 0.8, 0));
+        P.head.add(this.at(this.tor(0.15, 0.04, '#d8b060', { m: 0.7 }), 0.55, 0.12, 0.2, 0, Math.PI / 2, 0));
+        P.head.add(this.at(this.cyl(0.12, 0.12, 0.02, '#bfeaff', 8, { e: '#7fdcff', ei: 0.8, t: true, o: 0.7 }), 0.56, 0.12, 0.2, 0, 0, Math.PI / 2));
+        P.head.add(this.at(this.cyl(0.55, 0.55, 0.12, '#1a0a10', 10), 0.05, 0.6, 0, 0, 0, -0.2));
+        P.head.add(this.at(this.cone(0.08, 1.3, T, 4), -0.2, 1.1, 0.3, 0.4, 0, 0.6));
+        const rifle = G(this.at(this.cyl(0.07, 0.07, 4.6, '#2b2722', 6, { m: 0.6 }), 1.7, 0, 0, 0, 0, Math.PI / 2), this.at(this.box(1.5, 0.32, 0.24, '#6a3a1e'), -0.3, -0.1, 0), this.at(this.cyl(0.12, 0.12, 0.9, '#3a3a36', 8, { m: 0.6 }), 0.5, 0.22, 0, 0, 0, Math.PI / 2), this.at(this.box(0.5, 0.06, 0.24, '#d8b060', { m: 0.7 }), 0.2, 0.0, 0));
         P.armR.rotation.z = Math.PI / 2.3; P.armL.rotation.z = Math.PI / 2.6;
         rifle.position.set(0, -0.2, 0); rifle.rotation.z = -Math.PI / 2.3; P.handR.add(rifle); P.weapon = rifle; P.aimPose = true;
         break;
       }
-      case 'doc': {
-        P = this.humanoid({ hip: 1.9, torsoH: 2.1, torsoW: 1.8, legW: 0.62, armW: 0.55, armL: 1.9, headR: 0.66, top: '#b8b09a', pants: '#5a5446', skin: '#c99a74', noHead: true });
-        const coat = this.cyl(0.95, 1.25, 1.8, '#a8a08a', 7); coat.position.set(0, 1.6, 0); P.body.add(coat);
-        const pack = G(this.box(1.0, 1.6, 1.4, '#4e463a'));
-        for (const z of [-0.45, 0, 0.45]) pack.add(this.at(this.cyl(0.17, 0.17, 1.3, '#8cff7a', 6, { e: '#3aff2a', ei: 0.9 }), -0.35, 0.2, z));
-        pack.position.set(-1.05, 3.0, 0); P.body.add(pack);
-        P.head.add(this.sph(0.7, '#38362f', {}, 8, 6));
-        for (const z of [-0.26, 0.26]) P.head.add(this.at(this.cyl(0.2, 0.2, 0.12, '#d8c890', 8, { e: '#a89850', ei: 0.5 }), 0.62, 0.12, z, 0, 0, Math.PI / 2));
-        P.head.add(this.at(this.cyl(0.24, 0.3, 0.45, '#5a564c'), 0.7, -0.25, 0, 0, 0, Math.PI / 2));
-        P.head.add(this.at(this.cyl(0.72, 0.72, 0.28, T, 8), 0, 0.5, 0));
-        P.torso.add(this.at(this.box(0.1, 0.4, 0.4, '#f0ece0'), 0.0, 0.6, -0.9));
+      case 'gaspard': {
+        P = this.humanoid({ hip: 1.9, torsoH: 2.6, torsoW: 2.8, torsoD: 2.3, legW: 0.95, armW: 0.85, armL: 2.0, headR: 0.75, top: '#e0d8c8', pants: '#3a3a3a', skin: '#d09070', sleeve: '#e0d8c8', noHead: true });
+        P.torso.add(this.at(this.sph(1.3, '#e0d8c8', {}, 10, 8), 0.4, -0.3, 0));
+        P.torso.add(this.at(this.box(0.2, 1.8, 1.8, '#f0ece0'), 1.25, -0.5, 0));
+        P.head.add(this.sph(0.78, '#d09070', {}, 8, 6));
+        P.head.add(this.at(this.cyl(0.62, 0.55, 1.2, '#f4f0e8', 10), -0.05, 0.95, 0));
+        P.head.add(this.at(this.sph(0.75, '#f4f0e8', {}, 10, 6), -0.05, 1.6, 0));
+        P.head.add(this.at(this.box(0.25, 0.18, 0.9, '#3a2418'), 0.72, -0.18, 0));
+        P.head.add(this.at(this.tor(0.66, 0.16, T), 0, -0.65, 0, Math.PI / 2, 0, 0));
+        P.torso.add(this.at(this.tor(1.3, 0.12, '#c8a050', { m: 0.6 }), 0.2, 0.2, 0, 0.9, 0, 0));
+        const gun = G(this.at(this.cyl(0.55, 0.55, 1.0, '#3a3a36', 10, { m: 0.6, r: 0.4 }), 0.2, 0, 0, 0, 0, Math.PI / 2));
+        const barrels = G(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; barrels.add(this.at(this.cyl(0.1, 0.1, 2.4, '#4a4a46', 6, { m: 0.7, r: 0.3 }), 0, Math.cos(a) * 0.3, Math.sin(a) * 0.3, 0, 0, Math.PI / 2)); }
+        barrels.position.set(1.8, 0, 0); gun.add(barrels);
+        gun.add(this.at(this.cyl(0.6, 0.6, 0.6, '#6a5a2a', 10, { m: 0.5 }), -0.2, -0.6, 0.5, Math.PI / 2, 0, 0));
+        P.armR.rotation.z = Math.PI / 2.8; P.armL.rotation.z = Math.PI / 2.5;
+        gun.position.set(0.2, -0.3, -0.4); gun.rotation.z = -Math.PI / 2.8; P.handR.add(gun); P.weapon = gun; P.spin = barrels; P.aimPose = true;
+        break;
+      }
+      case 'suture': {
+        P = this.humanoid({ hip: 2.0, torsoH: 2.1, torsoW: 1.6, legW: 0.56, armW: 0.5, armL: 2.0, headR: 0.62, top: '#2a2a26', pants: '#2a2622', skin: '#c99a74', sleeve: '#2a2a26', noHead: true });
+        const coat = this.cyl(0.9, 1.3, 2.4, '#3a3630', 8); coat.position.set(0, 1.5, 0); P.body.add(coat);
+        for (const [y, z] of [[1.0, 0.6], [1.6, -0.5], [2.2, 0.3]]) coat.add(this.at(this.box(0.04, 0.4, 0.05, '#e8e0c0'), 1.0, y - 1.5, z, 0.5, 0, 0));
+        P.head.add(this.sph(0.66, '#3a3630', {}, 8, 6));
+        P.head.add(this.at(this.cone(0.3, 1.5, '#d8ccb0', 6), 1.15, -0.25, 0, 0, 0, -Math.PI / 2 - 0.25));
+        for (const z of [-0.26, 0.26]) P.head.add(this.at(this.cyl(0.2, 0.2, 0.12, '#8cff7a', 8, { e: '#3aff2a', ei: 1.3 }), 0.55, 0.15, z, 0, 0, Math.PI / 2));
+        P.head.add(this.at(this.cyl(0.42, 0.5, 0.9, '#1a1814', 8), -0.05, 0.85, 0));
+        P.head.add(this.at(this.cyl(0.85, 0.85, 0.08, '#1a1814', 10), -0.05, 0.42, 0));
+        P.head.add(this.at(this.box(0.08, 0.15, 0.86, T), 0.0, 0.5, 0));
+        const bag = G(this.box(0.9, 0.7, 0.5, '#5a3a22'), this.at(this.box(0.3, 0.3, 0.52, '#e8e0d0'), 0, 0.05, 0), this.at(this.box(0.1, 0.3, 0.06, '#c83a2a'), 0, 0.05, 0.27), this.at(this.box(0.3, 0.1, 0.06, '#c83a2a'), 0, 0.05, 0.27));
+        bag.position.set(0, 1.9, -1.0); P.body.add(bag);
         const gun = G(this.at(this.cyl(0.16, 0.16, 1.6, '#6a6458'), 0.7, 0, 0, 0, 0, Math.PI / 2), this.at(this.cyl(0.13, 0.13, 0.8, '#8cff7a', 6, { e: '#3aff2a', ei: 0.8 }), 0.6, 0.18, 0, 0, 0, Math.PI / 2), this.at(this.cyl(0.03, 0.03, 0.9, '#e0e0d8'), 1.9, 0, 0, 0, 0, Math.PI / 2));
         P.armR.rotation.z = Math.PI / 2.4; gun.rotation.z = -Math.PI / 2.4; P.handR.add(gun); P.weapon = gun; P.aimPose = true;
         break;
       }
-      case 'etincelle': {
-        P = this.humanoid({ hip: 1.85, torsoH: 2.0, torsoW: 1.7, legW: 0.6, armW: 0.52, armL: 1.85, headR: 0.62, top: '#4a5866', pants: '#3a4450', skin: '#c99a74' });
-        for (const s of [-1, 1]) P.torso.add(this.at(this.box(0.3, 2.1, 0.22, T), 0.55, 0, s * 0.45));
-        for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; P.head.add(this.at(this.cone(0.2, 0.7, '#e8722a', 4), Math.cos(a) * 0.35 - 0.1, 0.45, Math.sin(a) * 0.4, Math.sin(a) * 0.8, 0, -Math.cos(a) * 0.8)); }
-        P.head.add(this.at(this.box(0.25, 0.25, 1.1, '#c87533'), 0.48, 0.25, 0));
-        for (const z of [-0.25, 0.25]) P.head.add(this.at(this.sph(0.16, '#7fdcff', { e: '#3ab8ff', ei: 1.2 }, 6, 4), 0.6, 0.25, z));
-        const coils = [];
-        for (const z of [-0.55, 0.55]) {
-          const c = G(this.cyl(0.3, 0.38, 2.4, '#3a3026'));
-          for (let i = 0; i < 6; i++) c.add(this.at(this.tor(0.38, 0.08, '#c87533', { m: 0.6, r: 0.4 }), 0, -0.9 + i * 0.36, 0, Math.PI / 2, 0, 0));
-          c.add(this.at(this.sph(0.32, '#bfeaff', { e: '#7fdcff', ei: 2 }, 8, 6), 0, 1.4, 0));
-          c.position.set(-1.05, 3.6, z); P.body.add(c); coils.push(c);
-        }
-        P.coils = coils;
-        const glove = this.sph(0.38, '#7a8a96', { e: '#3ab8ff', ei: 0.6 }); P.handR.add(glove); P.glow = glove;
+      case 'crieur': {
+        P = this.humanoid({ hip: 1.9, torsoH: 2.2, torsoW: 2.0, legW: 0.7, armW: 0.6, armL: 1.9, headR: 0.66, top: '#a8a03a', pants: '#3a3a44', skin: '#8a5a3a', sleeve: '#a8a03a' });
+        P.head.add(this.at(this.box(0.2, 0.3, 1.0, '#141414', { m: 0.6, r: 0.2 }), 0.55, 0.1, 0));
+        for (const z of [-0.68, 0.68]) P.head.add(this.at(this.cyl(0.32, 0.32, 0.25, '#2a2a2a', 10), 0, 0, z, Math.PI / 2, 0, 0));
+        P.head.add(this.at(this.tor(0.68, 0.08, '#2a2a2a', {}, Math.PI), 0, 0, 0, 0, Math.PI / 2, 0));
+        P.torso.add(this.at(this.box(1.45, 0.4, 2.05, T), 0, 0.6, 0));
+        const horn = G(this.at(this.cone(1.1, 1.8, '#d8d0b8', 12, { side: true }), 0.6, 0, 0, 0, 0, Math.PI / 2), this.at(this.cyl(0.35, 0.35, 0.6, '#3a3a36', 8), -0.5, 0, 0, 0, 0, Math.PI / 2));
+        horn.scale.setScalar(0.7); horn.position.set(-1.0, 4.3, 1.25); horn.rotation.y = -0.5; horn.rotation.z = 0.35; P.body.add(horn);
+        P.body.add(this.at(this.box(0.8, 1.4, 1.4, '#4a4a52'), -1.15, 3.0, 0));
+        const ant = G(this.at(this.cyl(0.04, 0.05, 3.0, '#9a9a92', 4), 0, 1.5, 0)), light = this.sph(0.16, '#ff4a3a', { e: '#ff2010', ei: 2 }, 6, 4); light.position.y = 3.05; ant.add(light);
+        ant.position.set(-1.3, 3.6, -0.5); P.body.add(ant); P.glow = light;
+        const mic = G(this.at(this.cyl(0.08, 0.1, 0.6, '#2a2a2a', 6), 0.3, 0, 0, 0, 0, Math.PI / 2), this.at(this.sph(0.2, '#5a5a5a', { m: 0.5 }, 8, 6), 0.65, 0, 0));
+        P.armR.rotation.z = Math.PI / 2.4; mic.rotation.z = -Math.PI / 2.4; P.handR.add(mic); P.weapon = mic; P.aimPose = true;
         break;
       }
-      case 'rempart': {
-        P = this.humanoid({ hip: 2.0, torsoH: 2.3, torsoW: 2.3, torsoD: 1.6, legW: 0.85, armW: 0.75, armL: 2.0, headR: 0.7, top: '#3e4652', pants: '#2c323a', skin: '#a07858', noHead: true, belt: '#1a1e24' });
-        P.head.add(this.sph(0.78, '#2c323a', { m: 0.3, r: 0.5 }, 8, 6));
-        P.head.add(this.at(this.box(0.2, 0.5, 1.2, '#1a2a3a', { m: 0.8, r: 0.15, e: '#2a4a6a', ei: 0.3 }), 0.62, 0.05, 0));
-        P.torso.add(this.at(this.box(1.65, 0.5, 2.35, T), 0, -0.5, 0));
-        for (const s of [-1, 1]) P.body.add(this.at(this.box(1.0, 0.5, 0.9, '#4a5462', { m: 0.3 }), 0, 4.2, s * 1.4));
-        const shield = G(this.box(0.25, 3.4, 2.2, '#5a626e', { m: 0.4, r: 0.4 }), this.at(this.box(0.27, 0.4, 2.22, T), 0, 0.9, 0), this.at(this.box(0.28, 0.7, 1.2, '#2a3e52', { m: 0.8, r: 0.1, t: true, o: 0.8 }), 0.02, 0.35, 0));
-        P.armL.rotation.z = 0.9; shield.position.set(0.9, 0.3, -0.35); shield.rotation.z = -0.9; P.handL.add(shield); P.shield = shield;
-        const baton = this.cyl(0.12, 0.12, 2.0, '#1a1a1a'); baton.rotation.z = -1.1; baton.position.set(0.5, 0, 0); P.handR.add(baton); P.weapon = baton;
+      case 'balafre': {
+        P = this.humanoid({ hip: 2.0, torsoH: 2.2, torsoW: 1.85, legW: 0.66, armW: 0.56, armL: 2.0, headR: 0.62, top: '#e08a20', pants: '#2a2a34', skin: '#b88a68', sleeve: '#2a2a34' });
+        for (const y of [-0.3, 0.4]) P.torso.add(this.at(this.box(1.12, 0.14, 1.87, '#e8e8e0', { e: '#a8a8a0', ei: 0.3 }), 0, y, 0));
+        P.head.add(this.at(this.cyl(0.64, 0.66, 0.35, '#1e2a44', 10), 0, 0.42, 0));
+        P.head.add(this.at(this.box(0.55, 0.08, 0.9, '#1e2a44'), 0.55, 0.3, 0));
+        P.head.add(this.at(this.box(0.06, 0.7, 0.08, '#a82a1a'), 0.6, -0.05, 0.12, 0.6, 0, 0));
+        P.torso.add(this.at(this.box(1.2, 0.35, 1.9, T), 0, -0.85, 0));
+        const sword = G(this.at(this.box(0.12, 3.1, 0.34, '#e4e8ec', { m: 0.3, r: 0.3, e: '#8a9098', ei: 0.35 }), 0, 1.75, 0), this.at(this.box(0.2, 0.15, 0.9, '#3a3a36', { m: 0.6 }), 0, 0.15, 0), this.at(this.cyl(0.11, 0.11, 0.7, '#2a1a10', 6), 0, -0.25, 0), this.at(this.box(0.13, 0.5, 0.1, '#e08a20'), 0, 2.6, 0));
+        sword.position.set(0.25, -0.1, 0); sword.rotation.z = -1.0; P.handR.add(sword); P.weapon = sword;
         break;
       }
-      case 'crocs': {
-        P = this.humanoid({ hip: 1.6, torsoH: 2.0, torsoW: 1.9, torsoD: 1.4, legW: 0.7, armW: 0.6, armL: 2.3, headR: 0.62, top: '#6f7a5a', pants: '#4a3a2a', skin: '#6f7a5a', sleeve: '#6f7a5a' });
-        P.body.rotation.z = -0.35; P.body.position.y = -0.2;
-        for (const z of [-0.22, 0.22]) P.head.add(this.at(this.sph(0.14, '#ff3a2a', { e: '#ff2010', ei: 2 }, 6, 4), 0.55, 0.12, z));
-        P.head.add(this.at(this.box(0.6, 0.35, 0.6, '#5a6448'), 0.55, -0.25, 0));
-        for (const z of [-0.4, 0.4]) P.head.add(this.at(this.cone(0.18, 0.6, '#5a6448', 4), -0.1, 0.65, z, z, 0, 0));
-        for (let i = 0; i < 5; i++) P.body.add(this.at(this.cone(0.2, 0.8, '#3a4030', 4), -0.75, 2.2 + i * 0.4, 0, 0, 0, 0.9));
-        for (const hand of [P.handL, P.handR]) for (const z of [-0.2, 0, 0.2]) hand.add(this.at(this.cone(0.09, 0.8, '#e8e0c8', 4), 0.25, -0.35, z, 0, 0, Math.PI * 0.85));
-        P.torso.add(this.at(this.box(1.45, 0.35, 1.95, T), 0, -0.6, 0));
-        break;
-      }
-      case 'cendre': {
-        P = this.humanoid({ hip: 1.9, torsoH: 2.1, torsoW: 1.8, legW: 0.62, armW: 0.56, armL: 1.9, headR: 0.64, top: '#7a3a22', pants: '#4a2a1a', skin: '#c99a74', noHead: true, belt: '#2a1a10' });
-        for (const z of [-0.45, 0.45]) { const tank = G(this.cyl(0.42, 0.42, 2.4, '#b8341c', 10, { m: 0.3, r: 0.5 }), this.at(this.sph(0.42, '#b8341c', { m: 0.3 }, 10, 6), 0, 1.2, 0), this.at(this.cyl(0.12, 0.12, 0.3, '#3a3a36'), 0, 1.6, 0)); tank.position.set(-1.05, 3.0, z); P.body.add(tank); }
-        P.head.add(this.box(1.2, 1.25, 1.2, '#4a4a46', { m: 0.4 }));
-        P.head.add(this.at(this.box(0.1, 0.35, 0.9, '#ff8a2a', { e: '#ff6a10', ei: 1.4 }), 0.62, 0.05, 0));
-        P.head.add(this.at(this.tor(0.6, 0.15, T), 0, -0.6, 0, Math.PI / 2, 0, 0));
-        const nozzle = G(this.at(this.cyl(0.18, 0.24, 2.0, '#3a3a36', 8, { m: 0.6 }), 0.9, 0, 0, 0, 0, Math.PI / 2), this.at(this.cyl(0.25, 0.25, 0.5, '#8a7a5a'), 0.2, -0.2, 0, 0, 0, Math.PI / 2));
-        const pilot = this.cone(0.14, 0.45, '#ffb347', 6, { e: '#ff7a10', ei: 2.5 }); pilot.position.set(2.05, 0, 0); pilot.rotation.z = -Math.PI / 2; nozzle.add(pilot);
-        P.armR.rotation.z = Math.PI / 2.4; nozzle.rotation.z = -Math.PI / 2.4; P.handR.add(nozzle); P.weapon = nozzle; P.flame = pilot; P.aimPose = true;
-        break;
-      }
-      case 'mecano': {
-        P = this.humanoid({ hip: 1.95, torsoH: 2.3, torsoW: 2.2, torsoD: 1.6, legW: 0.82, armW: 0.78, armL: 2.1, headR: 0.66, top: '#a88a3a', pants: '#6a5a2a', skin: '#c08860', sleeve: '#7a7a72', belt: '#3a2a1a' });
-        P.head.add(this.at(this.cyl(0.7, 0.75, 0.35, '#e0b84a', 10), 0, 0.42, 0));
-        P.head.add(this.at(this.box(0.2, 0.25, 1.0, '#3a3a36'), 0.55, 0.15, 0));
-        const frame = G(this.box(0.4, 2.6, 1.8, '#5a5a52', { m: 0.6, r: 0.4 }), this.at(this.cyl(0.18, 0.18, 2.4, '#c96f2b', 6), 0.1, 0, -0.75), this.at(this.cyl(0.18, 0.18, 2.4, '#c96f2b', 6), 0.1, 0, 0.75));
-        frame.position.set(-1.0, 3.3, 0); P.body.add(frame);
-        for (const arm of [P.armL, P.armR]) arm.add(this.at(this.cyl(0.5, 0.5, 1.2, '#6a6a62', 8, { m: 0.6, r: 0.4 }), 0, -1.2, 0));
-        P.torso.add(this.at(this.box(1.65, 0.45, 2.25, T), 0, 0.5, 0));
-        const wrench = G(this.at(this.box(0.3, 2.8, 0.3, '#8a8a82', { m: 0.6, r: 0.4 }), 0, 1.0, 0), this.at(this.tor(0.55, 0.2, '#8a8a82', { m: 0.6, r: 0.4 }, Math.PI * 1.4), 0, 2.6, 0, 0, Math.PI / 2, -0.3));
-        wrench.position.set(0.3, -0.2, 0); wrench.rotation.z = -1.25; P.handR.add(wrench); P.weapon = wrench;
+      case 'vase': {
+        P = this.humanoid({ hip: 1.9, torsoH: 2.0, torsoW: 1.65, legW: 0.58, armW: 0.48, armL: 1.9, headR: 0.6, top: '#2e5a64', pants: '#5a4a3a', skin: '#c8946a', sleeve: '#2e5a64', boots: '#1a120c', noHead: true });
+        const tails = this.cone(1.15, 2.4, '#26505a', 8); tails.position.set(-0.15, 1.9, 0); P.body.add(tails);
+        P.torso.add(this.at(this.box(1.1, 0.4, 1.7, '#a82a24'), 0, -0.8, 0));
+        P.torso.add(this.at(this.box(0.2, 1.4, 0.6, '#e8e0d0'), 0.55, 0.2, 0));
+        P.head.add(this.sph(0.6, '#c8946a', {}, 8, 6));
+        P.head.add(this.at(this.sph(0.5, '#3a2014', {}, 8, 6), -0.25, 0.1, 0));
+        const hat = G(this.cyl(0.95, 0.95, 0.12, '#1a1410', 3), this.at(this.cyl(0.5, 0.58, 0.55, '#1a1410', 8), 0, 0.3, 0), this.at(this.tor(0.52, 0.06, '#d8b060', { m: 0.6 }), 0, 0.1, 0, Math.PI / 2, 0, 0));
+        hat.add(this.at(this.cone(0.1, 1.2, '#f0ece0', 4), -0.3, 0.6, 0.35, 0.5, 0, 0.7)); hat.add(this.at(this.box(0.3, 0.2, 0.6, T), 0.45, 0.25, 0));
+        hat.position.set(0, 0.5, 0); hat.rotation.y = Math.PI / 6; P.head.add(hat);
+        const saber = G(this.at(this.box(0.1, 2.6, 0.32, '#e4e8ec', { m: 0.3, r: 0.3, e: '#8a9098', ei: 0.35 }), 0.15, 1.5, 0, 0, 0, -0.12), this.at(this.tor(0.25, 0.05, '#d8b060', { m: 0.7 }, Math.PI), 0, 0.15, 0, 0, Math.PI / 2, 0), this.at(this.cyl(0.1, 0.1, 0.55, '#2a1a10', 6), 0, -0.2, 0));
+        saber.position.set(0.25, -0.1, 0); saber.rotation.z = -1.1; P.handR.add(saber); P.weapon = saber;
+        const pistol = G(this.at(this.cyl(0.08, 0.1, 1.1, '#3a3a36', 6, { m: 0.7 }), 0.55, 0, 0, 0, 0, Math.PI / 2), this.at(this.box(0.45, 0.4, 0.2, '#6a3a1e'), -0.05, -0.2, 0, 0, 0, 0.4));
+        P.armL.rotation.z = 0.7; pistol.rotation.z = -0.7; P.handL.add(pistol);
         break;
       }
     }
-    // Brassard d'équipe lumineux au sol géré par le rendu ; échelle globale
     return P;
   },
 

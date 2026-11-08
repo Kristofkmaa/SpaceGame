@@ -1,13 +1,17 @@
 // ============ Studio : portraits 3D, présentoir de sélection, scène du menu ============
 const HERO_THEME = {
-  briseroc:  { bg: ['#9a5428', '#24120a'], accent: '#ffb347' },
-  vipere:    { bg: ['#6a7a3a', '#141a0a'], accent: '#56d0c8' },
-  doc:       { bg: ['#3a7a58', '#0a1c12'], accent: '#8cff7a' },
-  etincelle: { bg: ['#34649a', '#0a1424'], accent: '#7fdcff' },
-  rempart:   { bg: ['#4a5a72', '#10141c'], accent: '#bfeaff' },
-  crocs:     { bg: ['#6a3a3a', '#160a0a'], accent: '#ff5a4a' },
-  cendre:    { bg: ['#a84a1a', '#200c04'], accent: '#ffa24a' },
-  mecano:    { bg: ['#8a7a2a', '#1a1606'], accent: '#ffd24a' },
+  rouille:  { bg: ['#8a6a3a', '#1e140a'], accent: '#ffd24a' },
+  goudron:  { bg: ['#4a3e34', '#0c0a08'], accent: '#ffb347' },
+  louve:    { bg: ['#6a3a3a', '#160a0a'], accent: '#ff5a4a' },
+  silo:     { bg: ['#3a6a8a', '#0a1620'], accent: '#9fd8ff' },
+  neon:     { bg: ['#5a3a8a', '#120a20'], accent: '#7fdcff' },
+  cendre:   { bg: ['#a84a1a', '#200c04'], accent: '#ffa24a' },
+  comtesse: { bg: ['#6a2a44', '#16080e'], accent: '#ffd8a0' },
+  gaspard:  { bg: ['#8a5a2a', '#1e1208'], accent: '#ffe08a' },
+  suture:   { bg: ['#3a7a58', '#0a1c12'], accent: '#8cff7a' },
+  crieur:   { bg: ['#7a7a2a', '#18180a'], accent: '#ffe84a' },
+  balafre:  { bg: ['#9a5a1a', '#1e1006'], accent: '#ffb84a' },
+  vase:     { bg: ['#2a6a72', '#081618'], accent: '#ffd8a0' },
 };
 class Studio {
   constructor() {
@@ -109,7 +113,7 @@ class Showcase {
     for (let i = 0; i < 70; i++) { const a = rnd() * 6.28, d = 14 + rnd() * 90, sz = 1 + rnd() * 5; const m = M3.mesh(M3.geo('dod1', () => new THREE.DodecahedronGeometry(1, 0)), M3.mat(rnd() > 0.5 ? '#5e4e3c' : '#6e5c46')); m.position.set(Math.cos(a) * d, sz * 0.4, Math.sin(a) * d - 10); m.scale.set(sz, sz * (0.6 + rnd()), sz); scene.add(m); }
     for (let i = 0; i < 6; i++) { const w = M3.box(8 + rnd() * 10, 6 + rnd() * 14, 2, '#5a544a'); w.position.set(-50 + i * 22 + rnd() * 6, 4, -60 - rnd() * 30); w.rotation.y = rnd() * 0.6 - 0.3; scene.add(w); }
     const barrel = M3.group(M3.cyl(0.9, 0.9, 2.2, '#6a3a22', 10), M3.at(M3.cone(0.8, 1.6, '#ffb347', 6, { e: '#ff6a10', ei: 2.5 }), 0, 1.7, 0)); barrel.position.set(4, 1.1, 6); scene.add(barrel); this.flame = barrel.children[1];
-    const order = ['vipere', 'rempart', 'briseroc', 'etincelle', 'crocs'];
+    const order = ['comtesse', 'rouille', 'balafre', 'neon', 'louve'];
     this.heroes = order.map((id, i) => { const P = M3.hero(id, 0); P.root.position.set(-6 + i * 3.6, 0, (i % 2) * 2.2 - Math.abs(i - 2) * 0.8); P.root.rotation.y = -0.85 + (i - 2) * 0.12; scene.add(P.root); return P; });
     const dustGeo = new THREE.BufferGeometry(), pts = [];
     for (let i = 0; i < 500; i++) pts.push((rnd() - 0.5) * 80, rnd() * 20, (rnd() - 0.5) * 60);

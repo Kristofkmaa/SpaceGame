@@ -75,16 +75,24 @@ Six emplacements sont disponibles. Les potions se consomment avec les touches `1
 
 ## Héros
 
-| Héros | Rôles | Compétences |
-|---|---|---|
-| Brise‑Roc | Haut, Jungle | Bélier · Tôle soudée · Onde de choc · Rouleau compresseur |
-| Vipère | Tireur | Chevrotine · Roulade · Piège à loups · Pluie de plomb |
-| Le Doc | Soutien | Seringue · Gaz toxique · Adrénaline · Stimulant de masse |
-| Étincelle | Milieu | Arc électrique · Mine magnétique · Surcharge · Tempête électrique |
-| Rempart | Soutien, Haut | Charge au bouclier · Mur de boucliers · Provocation · Dernier rempart |
-| Crocs | Jungle | Bond · Griffure · Frénésie · Curée |
-| Cendre | Milieu, Soutien | Lance‑flammes · Cocktail · Combustion · Brasier |
-| Mécano | Haut, Jungle | Clé à molette · Tourelle portative · Ressort · Exosquelette |
+Douze personnages, chacun avec son histoire, son caractère, ses répliques en jeu et un kit construit autour de son identité : un passif et quatre compétences.
+
+| Héros | Postes | Identité | Passif · Compétences |
+|---|---|---|---|
+| **Mère Rouille**, la matriarche de la casse | Haut, Soutien | Vieille ferrailleuse gouailleuse, bras de grue hydraulique | *Récupération* · Grappin · Blindage de fortune · Presse hydraulique · Électroaimant |
+| **Frère Goudron**, le pèlerin de l’autoroute | Haut, Jungle | Moine laconique couvert de bitume | *Pèlerinage* · Paume de goudron · Vœu de silence · Marche lente · Sermon de bitume |
+| **Louve**, l’enfant de la meute | Jungle | Enfant sauvage élevée par des chiens mutants | *Flair* · Bond · Crocs et lames · Hurlement · Curée |
+| **Vieux Silo**, le gardien du réservoir | Jungle, Haut | Géant porteur de la dernière citerne d’eau | *Réserve d’eau* · Jet sous pression · Flaque · Plongeon · Rupture de digue |
+| **Néon**, la gamine du réseau | Milieu | Ado en patins qui rebranche l’ancien réseau | *Surtension* · Arc électrique · Court‑circuit · Patins · Délestage |
+| **Sœur Cendre**, la prêtresse de la raffinerie | Milieu, Soutien | Jeune fanatique de la Flamme éternelle | *Offrande* · Souffle sacré · Cocktail · Combustion · Brasier |
+| **La Comtesse**, l’aristocrate des ruines | Tireur | Tireuse d’élite en robe du soir | *Étiquette* · Tir ajusté · Révérence · Piège de chasse · Dernière balle |
+| **Gros Gaspard**, le mitrailleur du convoi | Tireur | Cuisinier jovial armé d’une mitrailleuse rotative | *Échauffement* · Rafale · En position · Grenade de cuisine · Tir de barrage |
+| **Doc Suture**, le chirurgien sans diplôme | Soutien | Ancien vétérinaire anxieux au masque à bec | *Urgences* · Seringue · Transfusion · Gaz anesthésiant · Réanimation |
+| **Le Crieur**, la voix des ondes | Soutien, Milieu | Animateur de radio pirate exalté | *En direct* · Larsen · Hymne · Interférences · Mur du son |
+| **Balafre**, le duelliste du péage | Haut, Milieu | Ancien gardien de péage, épée forgée dans un ressort | *Garde haute* · Fente · Contre · Moulinet · Ticket de sortie |
+| **Capitaine Vase**, la corsaire des dunes | Jungle, Haut | Pirate des sables, sabre et pistolet à silex | *Poudre et acier* · Coup de sabre · Pistolet à silex · Grappin d’abordage · Bordée |
+
+Mécaniques de contrôle : étourdissement, immobilisation, ralentissement, silence (plus de compétences), peur (la cible s’enfuit), projection en l’air, attraction et repoussement, marque, invulnérabilité temporaire. Les héros prononcent des répliques (bulles) quand ils lancent leur ultime, éliminent un ennemi, meurent ou reviennent.
 
 Niveau maximum : 18. L’ultime se débloque aux niveaux 6, 11 et 16.
 Sorts d’invocateur :
@@ -122,7 +130,7 @@ js/utils.js         Utilitaires
 js/data.js          Carte, héros, sbires, monstres, camps, objets et recettes
 js/map.js           Voies, obstacles, grille de navigation, A*
 js/entities.js      Héros, sbires, monstres, structures, projectiles, zones
-js/abilities.js     Compétences et sorts, avec leur logique pour les bots
+js/abilities.js     Passifs, compétences et sorts, avec leur logique pour les bots
 js/keys.js          Raccourcis configurables
 js/models.js        Modèles 3D low‑poly (héros, monstres, structures)
 js/studio.js        Portraits, cartes, plateau tournant et scène du menu

@@ -61,9 +61,14 @@ class Menu {
     document.getElementById('diffBrief').textContent = DIFFICULTY[s.difficulty].brief;
     const box = document.getElementById('heroInfo');
     box.innerHTML = `<div class="kicker">${d.role} · ${d.ranged ? 'distance' : 'mêlée'} · ${d.roles.map(r => ROLES[r].label).join(', ')}</div><div class="hn">${d.name}</div><div class="ht">${d.title}</div>
+      <blockquote class="quote">« ${d.quote} »</blockquote>
       <div class="ratings">${Object.entries(d.ratings).map(([k, v]) => `<div><span>${k}</span><span>${[1, 2, 3].map(i => `<i class="${i <= v ? 'on' : ''}"></i>`).join('')}</span></div>`).join('')}<div><span>Difficulté</span><span>${[1, 2, 3].map(i => `<i class="${i <= d.difficulty ? 'on' : ''}"></i>`).join('')}</span></div></div>
-      <p class="lore">${d.lore}</p><p class="tip">${d.tip}</p><div id="abilList"></div>`;
-    const list = document.getElementById('abilList');
+      <p class="lore">${d.lore}</p><p class="identity"><b>Caractère :</b> ${d.identity}</p><p class="tip">${d.tip}</p><div id="abilList"></div>`;
+    const list = document.getElementById('abilList'), P = PASSIVES[d.passive];
+    const prow = document.createElement('div'); prow.className = 'abil';
+    prow.appendChild(Icons.get(d.passive, 96, 'ability', id));
+    prow.insertAdjacentHTML('beforeend', `<div><div class="an"><span class="k p">Passif</span>${P.name}</div><div class="ad">${P.desc()}</div></div>`);
+    list.appendChild(prow);
     d.abilities.forEach((aid, slot) => {
       const ab = ABILITIES[aid], row = document.createElement('div'); row.className = 'abil';
       row.appendChild(Icons.get(aid, 96, 'ability', id));

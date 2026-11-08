@@ -1,6 +1,6 @@
 // ============ Assemblage et boucle ============
 (function () {
-  const DEFAULTS = { nick: '', volume: 60, music: true, edgeScroll: true, cameraLocked: true, damageNumbers: true, shadows: true, difficulty: 'normal', hero: 'briseroc', role: 'top' };
+  const DEFAULTS = { nick: '', volume: 60, music: true, edgeScroll: true, cameraLocked: true, damageNumbers: true, shadows: true, difficulty: 'normal', hero: 'rouille', role: 'top' };
   const load = () => { try { return JSON.parse(localStorage.getItem('brulees2.settings') || '{}'); } catch (e) { return {}; } };
   const app = {
     game: null, settings: Object.assign({}, DEFAULTS, load()),
@@ -47,7 +47,7 @@
       return false;
     },
   };
-  if (!HEROES[app.settings.hero]) app.settings.hero = 'briseroc';
+  if (!HEROES[app.settings.hero]) app.settings.hero = 'rouille';
   if (!ROLES[app.settings.role]) app.settings.role = 'top';
   if (!DIFFICULTY[app.settings.difficulty]) app.settings.difficulty = 'normal';
   const canvas = document.getElementById('gameCanvas'), overlay = document.getElementById('overlay'), minimap = document.getElementById('minimap');
