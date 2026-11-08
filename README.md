@@ -57,21 +57,22 @@ La ferraille paie véhicules, bâtiments et améliorations.
 
 ## Contrôles
 
-| Action | Commande |
+Toutes les touches se changent dans **Options → Touches** (cliquez sur une touche, appuyez sur la nouvelle). Le réglage est conservé dans le navigateur. Le **Carnet du convoi → Contrôles** affiche toujours le guide à jour.
+
+| Action | Commande par défaut |
 |---|---|
+| Caméra | `Z` `Q` `S` `D` ou flèches, bords de l'écran, clic milieu, minimap · `Espace` : centrer sur le Bastion |
 | Sélectionner | Clic gauche / glisser · Maj : ajouter · double‑clic : même type à l'écran |
 | Ordre contextuel | Clic droit : déplacer, attaquer, récupérer, décharger, point de ralliement |
 | Attaque en mouvement | `A` puis clic |
-| Stop | `S` |
+| Stop | `X` |
 | Tactique | `G` agressif · `N` neutre · `V` évasif |
 | Formation | `F1` libre · `F2` delta · `F3` ligne · `F4` colonne |
 | Groupes | `Ctrl + 1‑5` assigner · `1‑5` rappeler (deux fois : centrer) |
-| Production | Bastion sélectionné : `C` `E` `I` `V` `F` `N` `D` |
-| Construction / améliorations | `B` / `R`, ou `T` `P` `M` `L` directement |
-| Caméra | Flèches, bords de l'écran, clic milieu, minimap, molette |
-| Divers | `Espace` centrer · `P` pause · `+` / `-` vitesse · `Échap` annuler / menu |
-
-Le carnet du convoi, en jeu, détaille chaque véhicule, ses contres et la doctrine.
+| Production | Bastion ou atelier sélectionné : `C` récupérateur · `E` motard · `I` buggy · `T` technical · `F` blindé · `O` roquettes · `H` char |
+| Construction | `B` panneau · `U` atelier · `K` bunker · `L` laboratoire · `M` mirador |
+| Améliorations | `R` |
+| Partie | `F8` pause · `+` / `-` vitesse · `Échap` annuler / menu |
 
 ## Structure du code
 
@@ -80,6 +81,7 @@ index.html        Page, HUD et écrans
 css/style.css     Thème rouille et poussière
 js/utils.js       Utilitaires
 js/config.js      Données : véhicules, bâtiments, améliorations, tactiques, difficultés
+js/keys.js        Raccourcis clavier configurables et guide des commandes
 js/art.js         Art vectoriel vu de dessus : véhicules, bâtiments, icônes tactiques
 js/audio.js       Vent, tempêtes et effets sonores synthétisés (WebAudio)
 js/entities.js    Classes Asteroid (décharge), Unit, Structure, Projectile, Effect

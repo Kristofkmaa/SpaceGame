@@ -104,13 +104,15 @@
 
     <!-- Options -->
     <div id="screenOptions" class="screen hidden">
-      <div class="panel">
+      <div class="panel wide">
         <div class="panelTitle">Options</div>
         <div class="setting"><span class="lbl">Volume général</span><input type="range" id="optVolume" min="0" max="100"></div>
         <div class="setting"><span class="lbl">Vent et ambiance</span><div class="seg" data-opt="music"><a data-v="1">Activée</a><a data-v="0">Coupée</a></div></div>
         <div class="setting"><span class="lbl">Défilement par les bords</span><div class="seg" data-opt="edgeScroll"><a data-v="1">Activé</a><a data-v="0">Désactivé</a></div></div>
         <div class="setting"><span class="lbl">Grille tactique</span><div class="seg" data-opt="grid"><a data-v="1">Affichée</a><a data-v="0">Masquée</a></div></div>
         <div class="setting"><span class="lbl">Portées affichées</span><div class="seg" data-opt="ranges"><a data-v="1">Sélection</a><a data-v="0">Jamais</a></div></div>
+        <div class="keysHead"><span class="lbl">Touches</span><span class="keysHint">Cliquez sur une touche pour la changer. Les flèches déplacent toujours la caméra.</span><a class="btn ghost small" id="btnResetKeys">Réinitialiser</a></div>
+        <div id="keysList"></div>
         <div class="actions"><a class="btn ghost" data-go="back">Retour</a></div>
       </div>
     </div>
@@ -141,6 +143,7 @@
 
   <script src="js/utils.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/keys.js"></script>
   <script src="js/art.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/entities.js"></script>

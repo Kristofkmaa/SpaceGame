@@ -18,6 +18,8 @@
     endGame() { this.game = null; this.ui.hide(); this.renderer.setGame(null); },
   };
   const canvas = document.getElementById('game'), minimap = document.getElementById('minimap');
+  app.keys = new KeyBindings(app.settings.keys);
+  app.saveKeys = function () { this.settings.keys = this.keys.overrides(); this.saveSettings(); };
   app.audio = new GameAudio();
   app.renderer = new Renderer(canvas);
   app.ui = new UI(app);

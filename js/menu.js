@@ -9,7 +9,7 @@ class Menu {
     document.getElementById('btnResume').addEventListener('click', () => this.closePause());
     document.getElementById('btnAbandon').addEventListener('click', () => { this.app.endGame(); this.show('main'); });
     document.getElementById('btnReplay').addEventListener('click', () => this.app.startGame());
-    this.buildSkirmish(); this.buildOptions();
+    this.buildSkirmish(); this.buildOptions(); this.buildKeys();
     document.querySelectorAll('.codexTabs a').forEach(a => a.addEventListener('click', () => { document.querySelectorAll('.codexTabs a').forEach(x => x.classList.remove('on')); a.classList.add('on'); this.renderCodex(a.dataset.tab); }));
     this.show('main');
   }
@@ -60,6 +60,38 @@ class Menu {
     }
   }
 
+  // ----- Touches -----
+  buildKeys() {
+    document.getElementById('btnResetKeys').addEventListener('click', () => { this.app.keys.reset(); this.app.saveKeys(); this.renderKeys(); this.app.ui.refreshKeyLabels(); this.app.audio.play('confirm'); });
+    this.renderKeys();
+  }
+  renderKeys() {
+    const list = document.getElementById('keysList'); list.innerHTML = '';
+    let group = null;
+    for (const a of KEY_ACTIONS) {
+      if (a.group !== group) { group = a.group; const h = document.createElement('div'); h.className = 'kgroup'; h.textContent = group; list.appendChild(h); }
+      const row = document.createElement('div'); row.className = 'krow'; row.dataset.id = a.id;
+      row.innerHTML = `<span>${a.label}</span><kbd>${this.app.keys.label(a.id)}</kbd>`;
+      row.querySelector('kbd').addEventListener('click', () => this.listenKey(row, a));
+      list.appendChild(row);
+    }
+  }
+  listenKey(row, action) {
+    if (this.listening) return;
+    this.listening = true;
+    row.classList.add('listening'); row.querySelector('kbd').textContent = 'Appuyez…';
+    const done = () => { this.listening = false; window.removeEventListener('keydown', handler, true); this.renderKeys(); this.app.ui.refreshKeyLabels(); };
+    const handler = (e) => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
+      if (e.key === 'Escape') { done(); return; }
+      const key = KeyBindings.norm(e);
+      if (/^[1-5]$/.test(key) || key.startsWith('Arrow')) { row.querySelector('kbd').textContent = 'Réservée'; setTimeout(done, 700); return; }
+      this.app.keys.set(action.id, key); this.app.saveKeys(); this.app.audio.play('confirm'); done();
+    };
+    window.addEventListener('keydown', handler, true);
+  }
+
   // ----- Codex -----
   renderCodex(tab) {
     const body = document.getElementById('codexBody'); body.innerHTML = '';
@@ -81,8 +113,16 @@ class Menu {
       const r = document.createElement('div'); r.className = 'cx'; r.innerHTML = '<div><div class="n">Améliorations</div><div class="d">' + Object.values(RESEARCH).map(x => `<b style="color:var(--ink)">${x.name}</b> (⚙ ${x.cost}) — ${x.desc}`).join('<br>') + '</div></div>';
       body.appendChild(r);
     } else if (tab === 'controls') {
-      const rows = [['Sélectionner', '<kbd>Clic gauche</kbd> / glisser · <kbd>Maj</kbd> ajouter · double‑clic : même type à l’écran'], ['Ordre contextuel', '<kbd>Clic droit</kbd> : déplacer, attaquer, récupérer, décharger, point de ralliement'], ['Attaque en mouvement', '<kbd>A</kbd> puis clic'], ['Stop', '<kbd>S</kbd>'], ['Tactique', '<kbd>G</kbd> agressif · <kbd>N</kbd> neutre · <kbd>V</kbd> évasif (véhicules sélectionnés)'], ['Formation', '<kbd>F1</kbd> libre · <kbd>F2</kbd> delta · <kbd>F3</kbd> ligne · <kbd>F4</kbd> colonne'], ['Groupes', '<kbd>Ctrl</kbd>+<kbd>1‑5</kbd> assigner · <kbd>1‑5</kbd> rappeler · deux fois : centrer'], ['Production', 'Bastion sélectionné : <kbd>C</kbd> <kbd>E</kbd> <kbd>I</kbd> <kbd>V</kbd> <kbd>F</kbd> <kbd>N</kbd> <kbd>D</kbd>'], ['Construction / Améliorations', '<kbd>B</kbd> / <kbd>R</kbd> — ou directement <kbd>T</kbd> <kbd>P</kbd> <kbd>M</kbd> <kbd>L</kbd>'], ['Caméra', 'Flèches · bords de l’écran · clic milieu · minimap'], ['Zoom tactique', 'Molette : en dézoomant, les véhicules s’affichent en icônes tactiques'], ['Divers', '<kbd>Espace</kbd> centrer sur le Bastion · <kbd>P</kbd> pause · <kbd>+</kbd>/<kbd>-</kbd> vitesse · <kbd>Échap</kbd> annuler / menu']];
-      body.innerHTML = '<table class="ctrlTable">' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>';
+      const K = this.app.keys, L = id => `<kbd>${K.label(id)}</kbd>`;
+      const rows = FIXED_CONTROLS.map(r => [r[0], r[1]]);
+      rows.splice(2, 0, ['Caméra au clavier', `${L('camUp')} ${L('camLeft')} ${L('camDown')} ${L('camRight')} ou les flèches · ${L('center')} : centrer sur le Bastion`]);
+      rows.push(['Attaque en mouvement', `${L('attackMove')} puis clic`], ['Stop', L('stop')],
+        ['Tactique', `${L('stanceAggressive')} agressif · ${L('stanceNeutral')} neutre · ${L('stanceEvasive')} évasif`],
+        ['Formation', `${L('formation0')} libre · ${L('formation1')} delta · ${L('formation2')} ligne · ${L('formation3')} colonne`],
+        ['Production', Object.keys(UNIT_TYPES).map(t => `${L('produce_' + t)} ${UNIT_TYPES[t].short || UNIT_TYPES[t].name}`).join(' · ')],
+        ['Construction', `${L('build')} construction · ${L('research')} améliorations · ${['shipyard', 'turret', 'research', 'relay'].map(t => `${L('place_' + t)} ${STRUCTURE_TYPES[t].name}`).join(' · ')}`],
+        ['Partie', `${L('pause')} pause · ${L('speedUp')} / ${L('speedDown')} vitesse`]);
+      body.innerHTML = '<table class="ctrlTable">' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table><p class="doctrine" style="margin-top:14px"><b>Toutes ces touches se changent dans Options → Touches.</b></p>';
     } else {
       body.innerHTML = `<div class="doctrine">
         <p><b>La ferraille d’abord.</b> Chaque récupérateur de plus accélère tout le reste. Visez six à huit récupérateurs, puis un atelier pour agrandir le convoi.</p>

@@ -10,6 +10,7 @@ class UI {
     this.el.speedStat.addEventListener('click', () => this.cycleSpeed(1));
     this.el.btnMenu.addEventListener('click', () => this.app.menu.openPause());
     this.el.btnBuild.addEventListener('click', () => this.toggleSide('build'));
+    this.refreshKeyLabels();
     this.el.btnResearch.addEventListener('click', () => this.toggleSide('research'));
     this.el.sideClose.addEventListener('click', () => this.closeSide());
     document.addEventListener('mouseover', e => {
@@ -33,6 +34,11 @@ class UI {
     });
   }
   get game() { return this.app.game; }
+  refreshKeyLabels() {
+    this.el.btnBuild.querySelector('.k').textContent = this.app.keys.label('build');
+    this.el.btnResearch.querySelector('.k').textContent = this.app.keys.label('research');
+    this.cmdSig = ''; this.sideSig = '';
+  }
 
   setGame() {
     this.cmdSig = ''; this.selSig = ''; this.portraitId = null;
@@ -173,7 +179,7 @@ class UI {
       this.el.cmdTitle.textContent = s.def.name;
       if (s.building) { grid.innerHTML = '<span class="lbl" style="padding:10px">En construction…</span>'; return; }
       if (s.def.produces) {
-        for (const t of s.def.produces) { const d = UNIT_TYPES[t]; grid.appendChild(this.cmdButton({ name: d.short || d.name, icon: t, key: d.key, cost: d.cost, tip: this.unitTip(t), produce: t, onClick: () => this.produce(t) })); }
+        for (const t of s.def.produces) { const d = UNIT_TYPES[t]; grid.appendChild(this.cmdButton({ name: d.short || d.name, icon: t, key: this.app.keys.label('produce_' + t), cost: d.cost, tip: this.unitTip(t), produce: t, onClick: () => this.produce(t) })); }
         for (let i = 0; i < s.queue.length; i++) {
           const it = s.queue[i], d = document.createElement('div'); d.className = 'q'; d.dataset.cancel = i; d.dataset.tip = `<b>${UNIT_TYPES[it.type].name}</b><br>Clic : annuler (remboursé)`;
           const c = document.createElement('canvas'); c.width = 40; c.height = 40; Art.toCanvas(c, it.type, FACTION.PLAYER, 'unit'); d.appendChild(c);
@@ -184,26 +190,27 @@ class UI {
           const r = RESEARCH[s.research.id];
           grid.innerHTML = `<div style="flex:1"><div class="lbl">Amélioration en cours</div><div style="font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:4px 0">${r.name}</div><div class="bar"><div data-research-progress style="width:0;background:var(--gold)"></div></div></div>`;
           grid.appendChild(this.cmdButton({ name: 'Annuler', glyph: '✕', onClick: () => { g.cancelResearch(FACTION.PLAYER); this.refreshCommands(true); } }));
-        } else grid.appendChild(this.cmdButton({ name: 'Améliorer', glyph: '⚒', key: 'R', tip: '<b>Ouvrir les améliorations</b>', onClick: () => this.toggleSide('research') }));
+        } else grid.appendChild(this.cmdButton({ name: 'Améliorer', glyph: '⚒', key: this.app.keys.label('research'), tip: '<b>Ouvrir les améliorations</b>', onClick: () => this.toggleSide('research') }));
       } else grid.innerHTML = `<span class="lbl" style="padding:10px">${s.def.desc}</span>`;
       return;
     }
     if (units.length) {
       this.el.cmdTitle.textContent = units.length === 1 ? units[0].def.name : `${units.length} véhicules`;
       const combat = units.some(u => u.isCombat);
-      grid.appendChild(this.cmdButton({ name: 'Stop', glyph: '■', key: 'S', tip: '<b>Stop</b><br>Annule les ordres en cours.', onClick: () => g.commandStop(g.selectedUnits()) }));
-      if (combat) grid.appendChild(this.cmdButton({ name: 'Attaque‑mvt', glyph: '✦', key: 'A', active: g.mode && g.mode.attackMove, tip: '<b>Attaque en mouvement</b><br>Progresse en engageant tout ennemi rencontré.', onClick: () => { g.mode = { attackMove: true }; this.setHint('Attaque en mouvement — cliquez sur la destination'); this.refreshCommands(true); } }));
+      grid.appendChild(this.cmdButton({ name: 'Stop', glyph: '■', key: this.app.keys.label('stop'), tip: '<b>Stop</b><br>Annule les ordres en cours.', onClick: () => g.commandStop(g.selectedUnits()) }));
+      if (combat) grid.appendChild(this.cmdButton({ name: 'Attaque‑mvt', glyph: '✦', key: this.app.keys.label('attackMove'), active: g.mode && g.mode.attackMove, tip: '<b>Attaque en mouvement</b><br>Progresse en engageant tout ennemi rencontré.', onClick: () => { g.mode = { attackMove: true }; this.setHint('Attaque en mouvement — cliquez sur la destination'); this.refreshCommands(true); } }));
       if (units.some(u => u.type === 'collector')) grid.appendChild(this.cmdButton({ name: 'Retour', glyph: '⌂', tip: '<b>Retour</b><br>Ramène la benne au Bastion.', onClick: () => g.commandReturn(g.selectedUnits()) }));
-      const stances = Object.keys(STANCES).map(id => ({ id, label: STANCES[id].label, tip: `<b>${STANCES[id].label}</b> (${STANCES[id].key})<br>${STANCES[id].desc}` }));
+      const stanceKey = { aggressive: 'stanceAggressive', neutral: 'stanceNeutral', evasive: 'stanceEvasive' };
+      const stances = Object.keys(STANCES).map(id => ({ id, label: STANCES[id].label, tip: `<b>${STANCES[id].label}</b> (${this.app.keys.label(stanceKey[id])})<br>${STANCES[id].desc}` }));
       const cur = units.every(u => u.stance === units[0].stance) ? units[0].stance : null;
       const wrap = document.createElement('div'); wrap.style.flexBasis = '100%';
       wrap.appendChild(this.segRow('Tactique', stances, cur, id => { g.commandStance(g.selectedUnits(), id); this.refreshCommands(true); }));
-      wrap.appendChild(this.segRow('Formation', Object.keys(FORMATIONS).map((id, i) => ({ id, label: FORMATIONS[id].label, tip: `<b>${FORMATIONS[id].label}</b> (F${i + 1})<br>${FORMATIONS[id].desc}` })), g.formation, id => { g.formation = id; this.refreshCommands(true); }));
+      wrap.appendChild(this.segRow('Formation', Object.keys(FORMATIONS).map((id, i) => ({ id, label: FORMATIONS[id].label, tip: `<b>${FORMATIONS[id].label}</b> (${this.app.keys.label('formation' + i)})<br>${FORMATIONS[id].desc}` })), g.formation, id => { g.formation = id; this.refreshCommands(true); }));
       grid.appendChild(wrap);
       return;
     }
     this.el.cmdTitle.textContent = 'Commandes';
-    grid.innerHTML = '<span class="lbl" style="padding:10px;line-height:1.6">Sélectionnez le Bastion pour produire des véhicules.<br>B : construire · R : améliorer</span>';
+    grid.innerHTML = `<span class="lbl" style="padding:10px;line-height:1.6">Sélectionnez le Bastion pour produire des véhicules.<br>${this.app.keys.label('build')} : construire · ${this.app.keys.label('research')} : améliorer</span>`;
   }
 
   produce(type) {
@@ -246,13 +253,13 @@ class UI {
       for (const t in STRUCTURE_TYPES) {
         const d = STRUCTURE_TYPES[t]; if (!d.key) continue;
         const it = document.createElement('div'); it.className = 'item' + (g.mode && g.mode.place === t ? ' active' : ''); it.dataset.cost = d.cost;
-        it.innerHTML = `<div class="t"><div class="n"><span>${d.name}<span class="k">${d.key}</span></span><span class="c">⚙ ${d.cost}</span></div><div class="d">${d.desc}</div></div>`;
+        it.innerHTML = `<div class="t"><div class="n"><span>${d.name}<span class="k">${this.app.keys.label('place_' + t)}</span></span><span class="c">⚙ ${d.cost}</span></div><div class="d">${d.desc}</div></div>`;
         const c = document.createElement('canvas'); c.width = 52; c.height = 52; Art.toCanvas(c, t, FACTION.PLAYER, 'structure'); it.insertBefore(c, it.firstChild);
         it.addEventListener('click', () => this.startPlacement(t)); list.appendChild(it);
       }
     } else {
       const lab = g.structures.find(s => !s.dead && s.faction === FACTION.PLAYER && s.type === 'research' && !s.building);
-      if (!lab) { const n = document.createElement('div'); n.className = 'item'; n.innerHTML = '<div class="t"><div class="n">Aucun laboratoire</div><div class="d">Construisez un laboratoire (B puis M) pour accéder aux améliorations.</div></div>'; n.addEventListener('click', () => this.toggleSide('build')); list.appendChild(n); }
+      if (!lab) { const n = document.createElement('div'); n.className = 'item'; n.innerHTML = `<div class="t"><div class="n">Aucun laboratoire</div><div class="d">Construisez un laboratoire (${this.app.keys.label('build')} puis ${this.app.keys.label('place_research')}) pour accéder aux améliorations.</div></div>`; n.addEventListener('click', () => this.toggleSide('build')); list.appendChild(n); }
       for (const id in RESEARCH) {
         const r = RESEARCH[id], done = g.researched[FACTION.PLAYER].has(id), cur = lab && lab.research && lab.research.id === id;
         const locked = r.requires && !g.researched[FACTION.PLAYER].has(r.requires);

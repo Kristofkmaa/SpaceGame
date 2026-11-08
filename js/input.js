@@ -22,7 +22,7 @@ class Input {
     c.addEventListener('mouseleave', () => this.mouse.inCanvas = false);
     c.addEventListener('wheel', e => this.onWheel(e), { passive: false });
     window.addEventListener('keydown', e => this.onKeyDown(e));
-    window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
+    window.addEventListener('keyup', e => { this.keys[KeyBindings.norm(e)] = false; });
     window.addEventListener('blur', () => { this.keys = {}; });
     this.minimap.addEventListener('mousedown', e => this.onMinimap(e));
     this.minimap.addEventListener('mousemove', e => { if (e.buttons & 1) this.onMinimap(e, true); });
@@ -122,9 +122,9 @@ class Input {
   }
 
   onKeyDown(e) {
-    const g = this.game, k = e.key.toLowerCase();
-    this.keys[k] = true;
-    if (e.key.startsWith('Arrow') || e.key.startsWith('F')) { if (/^F[1-4]$/.test(e.key) || e.key.startsWith('Arrow')) e.preventDefault(); }
+    const g = this.game, key = KeyBindings.norm(e), K = this.app.keys;
+    this.keys[key] = true;
+    if (e.key.startsWith('Arrow') || /^F[1-9]$/.test(e.key) || key === ' ') { if (this.game && !this.app.menu.isOpen()) e.preventDefault(); }
     if (!g) return;
     if (e.key === 'Escape') {
       if (this.app.menu.isOpen()) { this.app.menu.escape(); return; }
@@ -134,13 +134,14 @@ class Input {
       this.app.menu.openPause(); return;
     }
     if (this.app.menu.isOpen()) return;
-    if (k === 'p') { g.paused = !g.paused; return; }
-    if (e.key === '+' || e.key === '=') { this.ui.cycleSpeed(1); return; }
-    if (e.key === '-') { this.ui.cycleSpeed(-1); return; }
+    const action = K.actionFor(key);
+    if (action === 'pause') { g.paused = !g.paused; return; }
+    if (action === 'speedUp') { this.ui.cycleSpeed(1); return; }
+    if (action === 'speedDown') { this.ui.cycleSpeed(-1); return; }
     if (g.state !== 'playing') return;
-    if (k === ' ') { e.preventDefault(); const b = g.playerBase(); if (b) { g.camera.x = b.x; g.camera.y = b.y; } return; }
-    if (k === 'b') { this.ui.toggleSide('build'); return; }
-    if (k === 'r') { this.ui.toggleSide('research'); return; }
+    if (action === 'center') { const b = g.playerBase(); if (b) { g.camera.x = b.x; g.camera.y = b.y; } return; }
+    if (action === 'build') { this.ui.toggleSide('build'); return; }
+    if (action === 'research') { this.ui.toggleSide('research'); return; }
     if (/^[1-5]$/.test(e.key)) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
@@ -156,23 +157,26 @@ class Input {
       }
       return;
     }
+    if (!action) return;
     const units = g.selectedUnits(), structures = g.selectedStructures();
-    if (/^F[1-4]$/.test(e.key)) { g.formation = ['none', 'delta', 'wall', 'column'][parseInt(e.key[1]) - 1]; this.ui.refreshCommands(true); return; }
+    if (action.startsWith('formation')) { g.formation = ['none', 'delta', 'wall', 'column'][parseInt(action.slice(9), 10)]; this.ui.refreshCommands(true); return; }
     if (units.length) {
-      if (k === 'a' && units.some(u => u.isCombat)) { g.mode = { attackMove: true }; this.ui.setHint('Attaque en mouvement — cliquez sur la destination'); return; }
-      if (k === 's') { g.commandStop(units); g.mode = null; this.ui.setHint(null); return; }
-      for (const st in STANCES) if (STANCES[st].key.toLowerCase() === k) { g.commandStance(units, st); this.ui.refreshCommands(true); return; }
+      if (action === 'attackMove' && units.some(u => u.isCombat)) { g.mode = { attackMove: true }; this.ui.setHint('Attaque en mouvement — cliquez sur la destination'); return; }
+      if (action === 'stop') { g.commandStop(units); g.mode = null; this.ui.setHint(null); return; }
+      const stance = { stanceAggressive: 'aggressive', stanceNeutral: 'neutral', stanceEvasive: 'evasive' }[action];
+      if (stance) { g.commandStance(units, stance); this.ui.refreshCommands(true); return; }
     }
-    const producers = structures.filter(s => s.def.produces && !s.building);
-    if (producers.length) for (const type in UNIT_TYPES) if (UNIT_TYPES[type].key.toLowerCase() === k) { this.ui.produce(type); return; }
-    for (const type in STRUCTURE_TYPES) { const d = STRUCTURE_TYPES[type]; if (d.key && d.key.toLowerCase() === k) { this.ui.startPlacement(type); return; } }
+    if (action.startsWith('produce_') && structures.some(s => s.def.produces && !s.building)) { this.ui.produce(action.slice(8)); return; }
+    if (action.startsWith('place_')) { this.ui.startPlacement(action.slice(6)); return; }
   }
 
   update(dt) {
     const g = this.game; if (!g || this.app.menu.isOpen()) return;
-    const c = g.camera, sp = CONFIG.CAMERA_SPEED * dt / c.zoom;
-    if (this.keys['arrowleft']) c.x -= sp; if (this.keys['arrowright']) c.x += sp;
-    if (this.keys['arrowup']) c.y -= sp; if (this.keys['arrowdown']) c.y += sp;
+    const c = g.camera, sp = CONFIG.CAMERA_SPEED * dt / c.zoom, K = this.app.keys;
+    if (this.keys['ArrowLeft'] || this.keys[K.get('camLeft')]) c.x -= sp;
+    if (this.keys['ArrowRight'] || this.keys[K.get('camRight')]) c.x += sp;
+    if (this.keys['ArrowUp'] || this.keys[K.get('camUp')]) c.y -= sp;
+    if (this.keys['ArrowDown'] || this.keys[K.get('camDown')]) c.y += sp;
     if (this.app.settings.edgeScroll && this.mouse.inCanvas && !this.selBox && document.hasFocus()) {
       const m = 12, w = window.innerWidth, h = window.innerHeight;
       if (this.mouse.sx < m) c.x -= sp; if (this.mouse.sx > w - m) c.x += sp;

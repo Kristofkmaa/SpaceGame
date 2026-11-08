@@ -61,7 +61,7 @@ const UNIT_TYPES = {
     desc: 'Buggy de raid armé d’une mitrailleuse. En meute, il tourne autour des chars lourds trop lents pour le viser.',
   },
   corvette: {
-    name: 'Technical', plural: 'Technicals', cls: 'corvette', key: 'V', cost: 120, buildTime: 13, hp: 270, speed: 130, radius: 11, sensor: 350, cap: 2,
+    name: 'Technical', plural: 'Technicals', cls: 'corvette', key: 'T', cost: 120, buildTime: 13, hp: 270, speed: 130, radius: 11, sensor: 350, cap: 2,
     damage: 11, range: 185, fireRate: 0.3, weapon: 'hmg', stance: 'neutral',
     desc: 'Pick‑up à mitrailleuse lourde. Déchiquette buggys et motards.',
   },
@@ -71,12 +71,12 @@ const UNIT_TYPES = {
     desc: 'Semi‑chenillé blindé avec canon. Colonne vertébrale du convoi, il écrase les technicals.',
   },
   ion: {
-    name: 'Lance‑roquettes', short: 'Roquettes', plural: 'Lance‑roquettes', cls: 'frigate', key: 'N', cost: 270, buildTime: 24, hp: 540, speed: 85, radius: 15, sensor: 400, cap: 3,
+    name: 'Lance‑roquettes', short: 'Roquettes', plural: 'Lance‑roquettes', cls: 'frigate', key: 'O', cost: 270, buildTime: 24, hp: 540, speed: 85, radius: 15, sensor: 400, cap: 3,
     damage: 72, range: 310, fireRate: 2.6, weapon: 'rocket', stance: 'neutral',
     desc: 'Camion lance‑roquettes. Ses salves perforent chars lourds et bunkers, mais ratent tout ce qui est petit et rapide.',
   },
   destroyer: {
-    name: 'Char lourd', short: 'Char', plural: 'Chars lourds', cls: 'capital', key: 'D', cost: 620, buildTime: 46, hp: 2300, speed: 55, radius: 24, sensor: 460, cap: 6,
+    name: 'Char lourd', short: 'Char', plural: 'Chars lourds', cls: 'capital', key: 'H', cost: 620, buildTime: 46, hp: 2300, speed: 55, radius: 24, sensor: 460, cap: 6,
     damage: 95, range: 330, fireRate: 2.2, weapon: 'arty', stance: 'neutral', requires: 'shipyard',
     desc: 'Char de bataille rafistolé. Son obusier pulvérise les blindés par zones, mais les buggys le contournent.',
   },
@@ -89,21 +89,21 @@ const STRUCTURE_TYPES = {
     desc: 'Place forte du convoi. Produit tous les véhicules, reçoit la ferraille et répare les véhicules garés à proximité.',
   },
   shipyard: {
-    name: 'Atelier', cls: 'structure', fem: false, key: 'T', cost: 420, buildTime: 45, hp: 1500, radius: 36, sensor: 400, cap: 12,
+    name: 'Atelier', cls: 'structure', fem: false, key: 'U', cost: 420, buildTime: 45, hp: 1500, radius: 36, sensor: 400, cap: 12,
     produces: ['corvette', 'assault', 'ion', 'destroyer'], deposit: false, regen: 0,
     desc: 'Hangar mécanique. Assemble blindés et chars lourds, ajoute 12 places au convoi et répare à proximité.',
   },
   turret: {
-    name: 'Bunker', cls: 'structure', fem: false, key: 'P', cost: 150, buildTime: 18, hp: 720, radius: 15, sensor: 360, cap: 0,
+    name: 'Bunker', cls: 'structure', fem: false, key: 'K', cost: 150, buildTime: 18, hp: 720, radius: 15, sensor: 360, cap: 0,
     damage: 24, range: 270, fireRate: 0.6, weapon: 'hmg',
     desc: 'Casemate en béton avec mitrailleuse lourde. Tient un carrefour, protège les récupérateurs.',
   },
   research: {
-    name: 'Laboratoire', cls: 'structure', fem: false, key: 'M', cost: 320, buildTime: 40, hp: 850, radius: 23, sensor: 300, cap: 0, max: 1,
+    name: 'Laboratoire', cls: 'structure', fem: false, key: 'L', cost: 320, buildTime: 40, hp: 850, radius: 23, sensor: 300, cap: 0, max: 1,
     desc: 'Débloque les améliorations : blindage, munitions, moteurs, récupération, radio.',
   },
   relay: {
-    name: 'Mirador', cls: 'structure', fem: false, key: 'L', cost: 110, buildTime: 12, hp: 320, radius: 12, sensor: 1150, cap: 0,
+    name: 'Mirador', cls: 'structure', fem: false, key: 'M', cost: 110, buildTime: 12, hp: 320, radius: 12, sensor: 1150, cap: 0,
     desc: 'Tour de guet avec projecteur. Dévoile une large zone. Fragile : à planter sur les routes d’approche.',
   },
 };
