@@ -44,7 +44,8 @@ class UI {
   log(text, cls = '') {
     const d = document.createElement('div');
     d.className = 'entry ' + cls;
-    d.innerHTML = `<span class="who">${cls === 'sys' ? 'Commandement' : cls === 'warn' ? 'Alerte' : 'Flotte'}</span>${text}`;
+    d.innerHTML = `<span class="who">${cls === 'sys' ? 'Radio' : cls === 'warn' ? 'Alerte' : 'Convoi'}</span>${text}`;
+    if (this.game) this.game.sfx('radio');
     this.el.log.appendChild(d);
     while (this.el.log.children.length > 5) this.el.log.firstChild.remove();
     setTimeout(() => d.remove(), 10500);
@@ -75,21 +76,21 @@ class UI {
   }
   unitTip(type) {
     const d = UNIT_TYPES[type];
-    let s = `<b>${d.name}</b> <span class="gold">◆ ${d.cost}</span> · ${d.buildTime}s · ${d.cap} pt${d.cap > 1 ? 's' : ''} de flotte<br>${d.desc}<br>Structure ${d.hp} · Vitesse ${d.speed} · Capteurs ${d.sensor}`;
-    if (d.damage) s += `<br>Dégâts ${d.damage} toutes les ${d.fireRate}s · Portée ${d.range}`; else s += `<br>Capacité ${d.capacity} · Extraction ${d.mineRate}/s`;
+    let s = `<b>${d.name}</b> <span class="gold">⚙ ${d.cost}</span> · ${d.buildTime}s · ${d.cap} place${d.cap > 1 ? 's' : ''} du convoi<br>${d.desc}<br>Blindage ${d.hp} · Vitesse ${d.speed} · Détection ${d.sensor}`;
+    if (d.damage) s += `<br>Dégâts ${d.damage} toutes les ${d.fireRate}s · Portée ${d.range}`; else s += `<br>Benne ${d.capacity} · Récupération ${d.mineRate}/s`;
     if (d.requires) s += `<br><span class="bad">Nécessite : ${STRUCTURE_TYPES[d.requires].name}</span>`;
     return s + this.counters(type);
   }
   structTip(type) {
     const d = STRUCTURE_TYPES[type];
-    let s = `<b>${d.name}</b> <span class="gold">◆ ${d.cost}</span> · ${d.buildTime}s<br>${d.desc}<br>Structure ${d.hp} · Capteurs ${d.sensor}`;
+    let s = `<b>${d.name}</b> <span class="gold">⚙ ${d.cost}</span> · ${d.buildTime}s<br>${d.desc}<br>Blindage ${d.hp} · Détection ${d.sensor}`;
     if (d.damage) s += `<br>Dégâts ${d.damage} toutes les ${d.fireRate}s · Portée ${d.range}`;
-    if (d.cap) s += `<br>Capacité de flotte +${d.cap}`;
+    if (d.cap) s += `<br>Places du convoi +${d.cap}`;
     return s;
   }
   orderLabel(u) {
     const o = u.order; if (!o) return 'En attente';
-    return { move: 'Déplacement', attackMove: 'Attaque en mouvement', attack: 'Engage : ' + (o.target.def ? o.target.def.name : 'cible'), mine: 'Extraction', return: 'Retour au vaisseau‑mère', guard: 'Retour en position', flee: 'Repli' }[o.type] || o.type;
+    return { move: 'Déplacement', attackMove: 'Attaque en mouvement', attack: 'Engage : ' + (o.target.def ? o.target.def.name : 'cible'), mine: 'Récupération', return: 'Retour au Bastion', guard: 'Retour au poste', flee: 'Repli' }[o.type] || o.type;
   }
 
   // ---------- Panneau de sélection ----------
@@ -103,18 +104,18 @@ class UI {
       const e = sel[0];
       if (this.portraitId !== e.id) { this.portraitId = e.id; Art.toCanvas(el.selPortrait, e.type, e.faction, e.kind); el.selName.textContent = e.def.name; el.selClass.textContent = CLASSES[e.def.cls]; }
       el.selHp.style.width = (e.hp / e.maxHp * 100).toFixed(0) + '%';
-      const rows = [['Structure', `${Math.ceil(e.hp)} / ${Math.ceil(e.maxHp)}`]];
+      const rows = [['Blindage', `${Math.ceil(e.hp)} / ${Math.ceil(e.maxHp)}`]];
       if (e.kind === 'unit') {
         if (e.isCombat) rows.push(['Armement', `${Math.round(e.damage)} / ${e.def.fireRate}s · portée ${e.range}`]);
-        if (e.type === 'collector') rows.push(['Cargaison', `${Math.floor(e.cargo)} / ${Math.floor(e.capacity)}`]);
+        if (e.type === 'collector') rows.push(['Benne', `${Math.floor(e.cargo)} / ${Math.floor(e.capacity)}`]);
         rows.push(['Tactique', STANCES[e.stance].label], ['État', this.orderLabel(e)]);
         if (e.group) rows.push(['Groupe', e.group]);
       } else {
         if (e.building) rows.push(['Construction', (e.buildProgress * 100).toFixed(0) + ' %']);
-        else if (e.research) rows.push(['Recherche', `${RESEARCH[e.research.id].name} · ${(e.research.progress / RESEARCH[e.research.id].time * 100).toFixed(0)} %`]);
+        else if (e.research) rows.push(['Amélioration', `${RESEARCH[e.research.id].name} · ${(e.research.progress / RESEARCH[e.research.id].time * 100).toFixed(0)} %`]);
         else if (e.def.produces) rows.push(['Production', e.queue.length ? `${e.queue.length} en file` : 'Inactive'], ['Ralliement', 'Clic droit pour définir']);
         if (e.def.damage) rows.push(['Armement', `${Math.round(e.damage)} / ${e.def.fireRate}s · portée ${e.range}`]);
-        rows.push(['Capteurs', Math.round(e.sensor)]);
+        rows.push(['Détection', Math.round(e.sensor)]);
       }
       el.selStats.innerHTML = rows.map(r => `<div class="row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
       return;
@@ -181,18 +182,18 @@ class UI {
       } else if (s.type === 'research') {
         if (s.research) {
           const r = RESEARCH[s.research.id];
-          grid.innerHTML = `<div style="flex:1"><div class="lbl">Recherche en cours</div><div style="font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:4px 0">${r.name}</div><div class="bar"><div data-research-progress style="width:0;background:var(--gold)"></div></div></div>`;
+          grid.innerHTML = `<div style="flex:1"><div class="lbl">Amélioration en cours</div><div style="font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:4px 0">${r.name}</div><div class="bar"><div data-research-progress style="width:0;background:var(--gold)"></div></div></div>`;
           grid.appendChild(this.cmdButton({ name: 'Annuler', glyph: '✕', onClick: () => { g.cancelResearch(FACTION.PLAYER); this.refreshCommands(true); } }));
-        } else grid.appendChild(this.cmdButton({ name: 'Recherche', glyph: '⚗', key: 'R', tip: '<b>Ouvrir la recherche</b>', onClick: () => this.toggleSide('research') }));
+        } else grid.appendChild(this.cmdButton({ name: 'Améliorer', glyph: '⚒', key: 'R', tip: '<b>Ouvrir les améliorations</b>', onClick: () => this.toggleSide('research') }));
       } else grid.innerHTML = `<span class="lbl" style="padding:10px">${s.def.desc}</span>`;
       return;
     }
     if (units.length) {
-      this.el.cmdTitle.textContent = units.length === 1 ? units[0].def.name : `${units.length} vaisseaux`;
+      this.el.cmdTitle.textContent = units.length === 1 ? units[0].def.name : `${units.length} véhicules`;
       const combat = units.some(u => u.isCombat);
       grid.appendChild(this.cmdButton({ name: 'Stop', glyph: '■', key: 'S', tip: '<b>Stop</b><br>Annule les ordres en cours.', onClick: () => g.commandStop(g.selectedUnits()) }));
       if (combat) grid.appendChild(this.cmdButton({ name: 'Attaque‑mvt', glyph: '✦', key: 'A', active: g.mode && g.mode.attackMove, tip: '<b>Attaque en mouvement</b><br>Progresse en engageant tout ennemi rencontré.', onClick: () => { g.mode = { attackMove: true }; this.setHint('Attaque en mouvement — cliquez sur la destination'); this.refreshCommands(true); } }));
-      if (units.some(u => u.type === 'collector')) grid.appendChild(this.cmdButton({ name: 'Retour', glyph: '⌂', tip: '<b>Retour</b><br>Ramène la cargaison au vaisseau‑mère.', onClick: () => g.commandReturn(g.selectedUnits()) }));
+      if (units.some(u => u.type === 'collector')) grid.appendChild(this.cmdButton({ name: 'Retour', glyph: '⌂', tip: '<b>Retour</b><br>Ramène la benne au Bastion.', onClick: () => g.commandReturn(g.selectedUnits()) }));
       const stances = Object.keys(STANCES).map(id => ({ id, label: STANCES[id].label, tip: `<b>${STANCES[id].label}</b> (${STANCES[id].key})<br>${STANCES[id].desc}` }));
       const cur = units.every(u => u.stance === units[0].stance) ? units[0].stance : null;
       const wrap = document.createElement('div'); wrap.style.flexBasis = '100%';
@@ -202,7 +203,7 @@ class UI {
       return;
     }
     this.el.cmdTitle.textContent = 'Commandes';
-    grid.innerHTML = '<span class="lbl" style="padding:10px;line-height:1.6">Sélectionnez le vaisseau‑mère pour produire des vaisseaux.<br>B : construire · R : recherche</span>';
+    grid.innerHTML = '<span class="lbl" style="padding:10px;line-height:1.6">Sélectionnez le Bastion pour produire des véhicules.<br>B : construire · R : améliorer</span>';
   }
 
   produce(type) {
@@ -215,7 +216,7 @@ class UI {
     const g = this.game, d = STRUCTURE_TYPES[type];
     if (!g.structures.some(s => s.faction === FACTION.PLAYER && !s.dead && !s.building)) return;
     if (g.mode && g.mode.place === type) { g.mode = null; this.setHint(null); return; }
-    if (g.ru[FACTION.PLAYER] < d.cost) { g.log('Ressources insuffisantes.', 'warn'); g.sfx('error'); return; }
+    if (g.ru[FACTION.PLAYER] < d.cost) { g.log('Ferraille insuffisante.', 'warn'); g.sfx('error'); return; }
     g.mode = { place: type }; g.sfx('click');
     this.setHint(`${d.name} — cliquez pour placer · Maj : plusieurs · clic droit : annuler`);
     this.refreshSide();
@@ -228,7 +229,7 @@ class UI {
     if (this.sideTab === tab) { this.closeSide(); return; }
     this.sideTab = tab; this.el.sidePanel.classList.remove('hidden');
     this.el.btnBuild.classList.toggle('on', tab === 'build'); this.el.btnResearch.classList.toggle('on', tab === 'research');
-    this.el.sideTitle.textContent = tab === 'build' ? 'Construction' : 'Recherche';
+    this.el.sideTitle.textContent = tab === 'build' ? 'Construction' : 'Améliorations';
     this.game.sfx('click'); this.refreshSide(true);
   }
   refreshSide(force) {
@@ -245,18 +246,18 @@ class UI {
       for (const t in STRUCTURE_TYPES) {
         const d = STRUCTURE_TYPES[t]; if (!d.key) continue;
         const it = document.createElement('div'); it.className = 'item' + (g.mode && g.mode.place === t ? ' active' : ''); it.dataset.cost = d.cost;
-        it.innerHTML = `<div class="t"><div class="n"><span>${d.name}<span class="k">${d.key}</span></span><span class="c">◆ ${d.cost}</span></div><div class="d">${d.desc}${d.cap ? ` Capacité +${d.cap}.` : ''}</div></div>`;
+        it.innerHTML = `<div class="t"><div class="n"><span>${d.name}<span class="k">${d.key}</span></span><span class="c">⚙ ${d.cost}</span></div><div class="d">${d.desc}</div></div>`;
         const c = document.createElement('canvas'); c.width = 52; c.height = 52; Art.toCanvas(c, t, FACTION.PLAYER, 'structure'); it.insertBefore(c, it.firstChild);
         it.addEventListener('click', () => this.startPlacement(t)); list.appendChild(it);
       }
     } else {
       const lab = g.structures.find(s => !s.dead && s.faction === FACTION.PLAYER && s.type === 'research' && !s.building);
-      if (!lab) { const n = document.createElement('div'); n.className = 'item'; n.innerHTML = '<div class="t"><div class="n">Aucun module de recherche</div><div class="d">Construisez un module de recherche (B puis M) pour accéder aux technologies.</div></div>'; n.addEventListener('click', () => this.toggleSide('build')); list.appendChild(n); }
+      if (!lab) { const n = document.createElement('div'); n.className = 'item'; n.innerHTML = '<div class="t"><div class="n">Aucun laboratoire</div><div class="d">Construisez un laboratoire (B puis M) pour accéder aux améliorations.</div></div>'; n.addEventListener('click', () => this.toggleSide('build')); list.appendChild(n); }
       for (const id in RESEARCH) {
         const r = RESEARCH[id], done = g.researched[FACTION.PLAYER].has(id), cur = lab && lab.research && lab.research.id === id;
         const locked = r.requires && !g.researched[FACTION.PLAYER].has(r.requires);
         const it = document.createElement('div'); it.className = 'item' + (done ? ' done' : cur ? ' active' : locked ? ' disabled' : ''); if (!done) it.dataset.cost = r.cost;
-        it.innerHTML = `<div class="t"><div class="n"><span>${r.name}</span><span class="c">${done ? '✓' : '◆ ' + r.cost}</span></div><div class="d">${r.desc}${locked ? ` <span style="color:var(--gold)">Requiert ${RESEARCH[r.requires].name}.</span>` : ''} ${done ? '' : r.time + ' s'}</div>${cur ? '<div class="prog"><div data-rprog style="width:0"></div></div>' : ''}</div>`;
+        it.innerHTML = `<div class="t"><div class="n"><span>${r.name}</span><span class="c">${done ? '✓' : '⚙ ' + r.cost}</span></div><div class="d">${r.desc}${locked ? ` <span style="color:var(--gold)">Requiert ${RESEARCH[r.requires].name}.</span>` : ''} ${done ? '' : r.time + ' s'}</div>${cur ? '<div class="prog"><div data-rprog style="width:0"></div></div>' : ''}</div>`;
         if (!done && !locked && !cur) it.addEventListener('click', () => { g.startResearch(FACTION.PLAYER, id); this.refreshSide(true); });
         list.appendChild(it);
       }

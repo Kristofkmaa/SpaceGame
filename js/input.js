@@ -147,7 +147,7 @@ class Input {
         const sel = g.selection.filter(x => x.kind === 'unit'); if (!sel.length) return;
         for (const u of g.units) if (u.group === e.key) u.group = null;
         for (const u of sel) u.group = e.key;
-        g.groups[e.key] = sel; g.log(`Groupe ${e.key} assigné (${sel.length} vaisseaux).`); g.sfx('confirm');
+        g.groups[e.key] = sel; g.log(`Groupe ${e.key} assigné (${sel.length} véhicules).`); g.sfx('confirm');
       } else if (g.groups[e.key] && g.groups[e.key].length) {
         const grp = g.groups[e.key].filter(u => !u.dead);
         g.select(grp);

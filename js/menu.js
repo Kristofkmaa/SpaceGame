@@ -43,7 +43,7 @@ class Menu {
   }
   updateBrief() {
     const s = this.app.settings, d = DIFFICULTY[s.difficulty], m = CONFIG.MAPS[s.map];
-    document.getElementById('brief').textContent = `${d.brief} Carte ${m.label.toLowerCase()} (${m.w} × ${m.h}), ${CONFIG.RESOURCES[s.resources].v} unités de ressources au départ.`;
+    document.getElementById('brief').textContent = `${d.brief} Territoire : ${m.label.toLowerCase()} (${m.w} × ${m.h}). ${CONFIG.RESOURCES[s.resources].v} unités de ferraille au départ.`;
   }
 
   // ----- Options -----
@@ -67,29 +67,29 @@ class Menu {
     if (tab === 'units') {
       for (const t in UNIT_TYPES) {
         const d = UNIT_TYPES[t], div = document.createElement('div'); div.className = 'cx';
-        div.innerHTML = `<div><div class="n">${d.name}<small>${CLASSES[d.cls]} · ◆ ${d.cost} · ${d.cap} pt${d.cap > 1 ? 's' : ''}</small></div><div class="d">${d.desc}</div><div class="s"><span>Structure <b>${d.hp}</b></span><span>Vitesse <b>${d.speed}</b></span>${d.damage ? `<span>Dégâts <b>${d.damage}</b> / ${d.fireRate}s</span><span>Portée <b>${d.range}</b></span>` : `<span>Capacité <b>${d.capacity}</b></span>`}<span>Capteurs <b>${d.sensor}</b></span></div><div class="s">${ui.counters(t).replace(/<br>/g, '')}</div></div>`;
+        div.innerHTML = `<div><div class="n">${d.name}<small>${CLASSES[d.cls]} · ⚙ ${d.cost} · ${d.cap} place${d.cap > 1 ? 's' : ''}</small></div><div class="d">${d.desc}</div><div class="s"><span>Blindage <b>${d.hp}</b></span><span>Vitesse <b>${d.speed}</b></span>${d.damage ? `<span>Dégâts <b>${d.damage}</b> / ${d.fireRate}s</span><span>Portée <b>${d.range}</b></span>` : `<span>Benne <b>${d.capacity}</b></span>`}<span>Détection <b>${d.sensor}</b></span></div><div class="s">${ui.counters(t).replace(/<br>/g, '')}</div></div>`;
         const c = document.createElement('canvas'); c.width = 72; c.height = 72; Art.toCanvas(c, t, FACTION.PLAYER, 'unit'); div.insertBefore(c, div.firstChild);
         body.appendChild(div);
       }
     } else if (tab === 'structures') {
       for (const t in STRUCTURE_TYPES) {
         const d = STRUCTURE_TYPES[t], div = document.createElement('div'); div.className = 'cx';
-        div.innerHTML = `<div><div class="n">${d.name}<small>${d.cost ? '◆ ' + d.cost : 'Initial'}${d.key ? ' · touche ' + d.key : ''}</small></div><div class="d">${d.desc}</div><div class="s"><span>Structure <b>${d.hp}</b></span><span>Capteurs <b>${d.sensor}</b></span>${d.cap ? `<span>Flotte <b>+${d.cap}</b></span>` : ''}${d.damage ? `<span>Dégâts <b>${d.damage}</b> / ${d.fireRate}s · portée ${d.range}</span>` : ''}</div></div>`;
+        div.innerHTML = `<div><div class="n">${d.name}<small>${d.cost ? '⚙ ' + d.cost : 'Initial'}${d.key ? ' · touche ' + d.key : ''}</small></div><div class="d">${d.desc}</div><div class="s"><span>Blindage <b>${d.hp}</b></span><span>Détection <b>${d.sensor}</b></span>${d.cap ? `<span>Convoi <b>+${d.cap}</b></span>` : ''}${d.damage ? `<span>Dégâts <b>${d.damage}</b> / ${d.fireRate}s · portée ${d.range}</span>` : ''}</div></div>`;
         const c = document.createElement('canvas'); c.width = 72; c.height = 72; Art.toCanvas(c, t, FACTION.PLAYER, 'structure'); div.insertBefore(c, div.firstChild);
         body.appendChild(div);
       }
-      const r = document.createElement('div'); r.className = 'cx'; r.innerHTML = '<div><div class="n">Technologies</div><div class="d">' + Object.values(RESEARCH).map(x => `<b style="color:var(--ink)">${x.name}</b> (◆ ${x.cost}) — ${x.desc}`).join('<br>') + '</div></div>';
+      const r = document.createElement('div'); r.className = 'cx'; r.innerHTML = '<div><div class="n">Améliorations</div><div class="d">' + Object.values(RESEARCH).map(x => `<b style="color:var(--ink)">${x.name}</b> (⚙ ${x.cost}) — ${x.desc}`).join('<br>') + '</div></div>';
       body.appendChild(r);
     } else if (tab === 'controls') {
-      const rows = [['Sélectionner', '<kbd>Clic gauche</kbd> / glisser · <kbd>Maj</kbd> ajouter · double‑clic : même type à l’écran'], ['Ordre contextuel', '<kbd>Clic droit</kbd> : déplacer, attaquer, extraire, décharger, point de ralliement'], ['Attaque en mouvement', '<kbd>A</kbd> puis clic'], ['Stop', '<kbd>S</kbd>'], ['Tactique', '<kbd>G</kbd> agressif · <kbd>N</kbd> neutre · <kbd>V</kbd> évasif (vaisseaux sélectionnés)'], ['Formation', '<kbd>F1</kbd> libre · <kbd>F2</kbd> delta · <kbd>F3</kbd> mur · <kbd>F4</kbd> colonne'], ['Groupes', '<kbd>Ctrl</kbd>+<kbd>1‑5</kbd> assigner · <kbd>1‑5</kbd> rappeler · deux fois : centrer'], ['Production', 'Vaisseau‑mère sélectionné : <kbd>C</kbd> <kbd>E</kbd> <kbd>I</kbd> <kbd>V</kbd> <kbd>F</kbd> <kbd>N</kbd> <kbd>D</kbd>'], ['Construction / Recherche', '<kbd>B</kbd> / <kbd>R</kbd> — ou directement <kbd>T</kbd> <kbd>P</kbd> <kbd>M</kbd> <kbd>L</kbd>'], ['Caméra', 'Flèches · bords de l’écran · clic milieu · minimap'], ['Zoom stratégique', 'Molette : en dézoomant, la flotte s’affiche en icônes tactiques'], ['Divers', '<kbd>Espace</kbd> centrer sur le vaisseau‑mère · <kbd>P</kbd> pause · <kbd>+</kbd>/<kbd>-</kbd> vitesse · <kbd>Échap</kbd> annuler / menu']];
+      const rows = [['Sélectionner', '<kbd>Clic gauche</kbd> / glisser · <kbd>Maj</kbd> ajouter · double‑clic : même type à l’écran'], ['Ordre contextuel', '<kbd>Clic droit</kbd> : déplacer, attaquer, récupérer, décharger, point de ralliement'], ['Attaque en mouvement', '<kbd>A</kbd> puis clic'], ['Stop', '<kbd>S</kbd>'], ['Tactique', '<kbd>G</kbd> agressif · <kbd>N</kbd> neutre · <kbd>V</kbd> évasif (véhicules sélectionnés)'], ['Formation', '<kbd>F1</kbd> libre · <kbd>F2</kbd> delta · <kbd>F3</kbd> ligne · <kbd>F4</kbd> colonne'], ['Groupes', '<kbd>Ctrl</kbd>+<kbd>1‑5</kbd> assigner · <kbd>1‑5</kbd> rappeler · deux fois : centrer'], ['Production', 'Bastion sélectionné : <kbd>C</kbd> <kbd>E</kbd> <kbd>I</kbd> <kbd>V</kbd> <kbd>F</kbd> <kbd>N</kbd> <kbd>D</kbd>'], ['Construction / Améliorations', '<kbd>B</kbd> / <kbd>R</kbd> — ou directement <kbd>T</kbd> <kbd>P</kbd> <kbd>M</kbd> <kbd>L</kbd>'], ['Caméra', 'Flèches · bords de l’écran · clic milieu · minimap'], ['Zoom tactique', 'Molette : en dézoomant, les véhicules s’affichent en icônes tactiques'], ['Divers', '<kbd>Espace</kbd> centrer sur le Bastion · <kbd>P</kbd> pause · <kbd>+</kbd>/<kbd>-</kbd> vitesse · <kbd>Échap</kbd> annuler / menu']];
       body.innerHTML = '<table class="ctrlTable">' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>';
     } else {
       body.innerHTML = `<div class="doctrine">
-        <p><b>Économie d’abord.</b> Chaque collecteur supplémentaire accélère tout le reste. Visez six à huit collecteurs, puis un chantier naval pour la capacité de flotte.</p>
-        <p><b>Contrer, pas accumuler.</b> Les intercepteurs harcèlent les destroyers, les corvettes déchiquettent les chasseurs, les frégates d’assaut écrasent les corvettes, les destroyers brisent les frégates. Observez la flotte adverse et répondez.</p>
-        <p><b>Voir avant d’être vu.</b> Un éclaireur en tactique évasive sur chaque route d’approche et un relais de capteurs vous donnent le temps de réagir. Hors de portée des capteurs, l’ennemi est invisible.</p>
-        <p><b>Tactiques.</b> Mettez vos collecteurs en évasif, vos défenseurs en neutre pour qu’ils reviennent à leur poste, et passez en agressif pour nettoyer un secteur. La formation Mur maximise la puissance de feu, la Colonne traverse les ceintures.</p>
-        <p><b>Réparer.</b> Les vaisseaux endommagés se réparent près du vaisseau‑mère ou d’un chantier. Un repli bien timé vaut mieux qu’un vaisseau perdu.</p>
+        <p><b>La ferraille d’abord.</b> Chaque récupérateur de plus accélère tout le reste. Visez six à huit récupérateurs, puis un atelier pour agrandir le convoi.</p>
+        <p><b>Contrer, pas accumuler.</b> Les buggys tournent autour des chars lourds, les technicals déchiquettent les buggys, les blindés écrasent les technicals, les chars lourds brisent les blindés. Regardez ce que l’ennemi envoie et répondez.</p>
+        <p><b>Voir avant d’être vu.</b> Un motard en tactique évasive sur chaque route et un mirador vous donnent le temps de réagir. Hors de portée de vos détecteurs, l’ennemi est invisible. Pendant une tempête de poussière, tout le monde voit moins loin : c’est le moment des coups de main.</p>
+        <p><b>Tactiques.</b> Mettez vos récupérateurs en évasif, vos défenseurs en neutre pour qu’ils reviennent à leur poste, et passez en agressif pour nettoyer un secteur. La formation Ligne maximise la puissance de feu, la Colonne traverse les ruines.</p>
+        <p><b>Réparer.</b> Les véhicules abîmés se réparent près du Bastion ou d’un atelier. Un repli bien timé vaut mieux qu’une carcasse de plus dans le désert.</p>
       </div>`;
     }
   }
@@ -99,8 +99,8 @@ class Menu {
     const g = this.app.game;
     document.getElementById('endTitle').textContent = won ? 'Victoire' : 'Défaite';
     document.getElementById('endTitle').classList.toggle('defeat', !won);
-    document.getElementById('endText').textContent = won ? 'Le vaisseau‑mère ennemi a été réduit en poussière. Le secteur est à nous.' : 'Notre dernière structure a été détruite. La flotte se disperse.';
-    const rows = [['Durée', Utils.formatTime(g.time)], ['Vaisseaux détruits', g.stats.killed], ['Vaisseaux perdus', g.stats.lost], ['Structures détruites', g.stats.structuresKilled], ['Structures perdues', g.stats.structuresLost], ['Ressources extraites', Math.floor(g.stats.mined)], ['Technologies', g.researched[FACTION.PLAYER].size + ' / ' + Object.keys(RESEARCH).length]];
+    document.getElementById('endText').textContent = won ? 'Le Bastion des Charognards n’est plus qu’un tas de tôle fumante. Le territoire est à nous.' : 'Notre dernier bâtiment est tombé. Le convoi se disperse dans la poussière.';
+    const rows = [['Durée', Utils.formatTime(g.time)], ['Véhicules détruits', g.stats.killed], ['Véhicules perdus', g.stats.lost], ['Bâtiments détruits', g.stats.structuresKilled], ['Bâtiments perdus', g.stats.structuresLost], ['Ferraille récupérée', Math.floor(g.stats.mined)], ['Améliorations', g.researched[FACTION.PLAYER].size + ' / ' + Object.keys(RESEARCH).length]];
     document.getElementById('endStats').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
     this.app.audio.play(won ? 'research' : 'alert');
     this.stack = []; this.show('end');

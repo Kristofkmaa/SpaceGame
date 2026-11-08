@@ -65,7 +65,7 @@ class Unit extends Entity {
   get isCombat() { return this.def.damage > 0; }
   get speed() { return this.def.speed * this.game.mult(this.faction, 'engines'); }
   get damage() { return this.def.damage * this.game.mult(this.faction, 'weapons'); }
-  get sensor() { return this.def.sensor * this.game.mult(this.faction, 'sensors'); }
+  get sensor() { return this.def.sensor * this.game.mult(this.faction, 'sensors') * this.game.sensorFactor(); }
   get capacity() { return this.def.capacity * this.game.mult(this.faction, 'mining'); }
   get mineRate() { return this.def.mineRate * this.game.mult(this.faction, 'mining'); }
   get range() { return this.def.range; }
@@ -100,7 +100,7 @@ class Structure extends Entity {
     this.spawnTime = game.time;
   }
   get damage() { return (this.def.damage || 0) * this.game.mult(this.faction, 'weapons'); }
-  get sensor() { return this.def.sensor * this.game.mult(this.faction, 'sensors'); }
+  get sensor() { return this.def.sensor * this.game.mult(this.faction, 'sensors') * this.game.sensorFactor(); }
   get range() { return this.def.range || 0; }
 }
 

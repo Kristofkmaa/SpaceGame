@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nebula Command</title>
+  <title>Dernier Convoi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,11 +14,11 @@
   <!-- ===================== HUD EN JEU ===================== -->
   <div id="hud" class="hidden">
     <div id="hudTop">
-      <div class="stat"><span class="lbl">Ressources</span><span class="val" id="ru">0</span></div>
-      <div class="stat"><span class="lbl">Flotte</span><span class="val"><span id="cap">0</span><span class="dim">/</span><span id="capMax">0</span></span></div>
+      <div class="stat"><span class="lbl">Ferraille</span><span class="val" id="ru">0</span></div>
+      <div class="stat"><span class="lbl">Convoi</span><span class="val"><span id="cap">0</span><span class="dim">/</span><span id="capMax">0</span></span></div>
       <div class="stat"><span class="lbl">Temps</span><span class="val" id="clock">00:00</span></div>
       <div class="stat clickable" id="speedStat" title="Vitesse (+ / -)"><span class="lbl">Vitesse</span><span class="val" id="speed">1×</span></div>
-      <div class="stat clickable" id="btnMenu" title="Menu (Échap)"><span class="lbl">Système</span><span class="val">Menu</span></div>
+      <div class="stat clickable" id="btnMenu" title="Menu (Échap)"><span class="lbl">Radio</span><span class="val">Menu</span></div>
     </div>
 
     <div id="log"></div>
@@ -47,8 +47,8 @@
 
       <div id="rightPanel">
         <div id="buildBar" class="frame">
-          <button class="tabBtn" id="btnBuild" data-tip="<b>Construction</b><br>Bâtiments et modules de la flotte."><span class="k">B</span>Construire</button>
-          <button class="tabBtn" id="btnResearch" data-tip="<b>Recherche</b><br>Nécessite un module de recherche."><span class="k">R</span>Recherche</button>
+          <button class="tabBtn" id="btnBuild" data-tip="<b>Construction</b><br>Bâtiments et défenses du camp."><span class="k">B</span>Construire</button>
+          <button class="tabBtn" id="btnResearch" data-tip="<b>Améliorations</b><br>Nécessite un laboratoire."><span class="k">R</span>Améliorer</button>
         </div>
         <div id="mapFrame" class="frame"><canvas id="minimap" width="240" height="170"></canvas></div>
       </div>
@@ -68,16 +68,16 @@
     <!-- Menu principal -->
     <div id="screenMain" class="screen">
       <div class="brand">
-        <div class="brandTitle">Nebula<br>Command</div>
+        <div class="brandTitle">Dernier<br>Convoi</div>
         <div class="rule"></div>
-        <div class="brandSub">Stratégie en temps réel — secteur Kharak‑7</div>
+        <div class="brandSub">Stratégie en temps réel — les Terres désolées</div>
       </div>
       <nav class="mainNav">
         <a data-go="skirmish">Escarmouche</a>
-        <a data-go="codex">Codex de la flotte</a>
+        <a data-go="codex">Carnet du convoi</a>
         <a data-go="options">Options</a>
       </nav>
-      <div class="footer">v2 — HTML5 Canvas, sans dépendance</div>
+      <div class="footer">An 41 après la Chute — HTML5 Canvas, sans dépendance</div>
     </div>
 
     <!-- Escarmouche -->
@@ -85,18 +85,18 @@
       <div class="panel wide">
         <div class="panelTitle">Escarmouche</div>
         <div class="setting"><span class="lbl">Adversaire</span><div class="seg" data-key="difficulty"></div></div>
-        <div class="setting"><span class="lbl">Carte</span><div class="seg" data-key="map"></div></div>
-        <div class="setting"><span class="lbl">Ressources initiales</span><div class="seg" data-key="resources"></div></div>
+        <div class="setting"><span class="lbl">Territoire</span><div class="seg" data-key="map"></div></div>
+        <div class="setting"><span class="lbl">Ferraille de départ</span><div class="seg" data-key="resources"></div></div>
         <p class="brief" id="brief"></p>
-        <div class="actions"><a class="btn ghost" data-go="main">Retour</a><a class="btn primary" id="btnDeploy">Déployer la flotte</a></div>
+        <div class="actions"><a class="btn ghost" data-go="main">Retour</a><a class="btn primary" id="btnDeploy">Déployer le convoi</a></div>
       </div>
     </div>
 
     <!-- Codex -->
     <div id="screenCodex" class="screen hidden">
       <div class="panel wide codex">
-        <div class="panelTitle">Codex de la flotte</div>
-        <div class="codexTabs"><a class="on" data-tab="units">Vaisseaux</a><a data-tab="structures">Structures</a><a data-tab="controls">Contrôles</a><a data-tab="doctrine">Doctrine</a></div>
+        <div class="panelTitle">Carnet du convoi</div>
+        <div class="codexTabs"><a class="on" data-tab="units">Véhicules</a><a data-tab="structures">Bâtiments</a><a data-tab="controls">Contrôles</a><a data-tab="doctrine">Doctrine</a></div>
         <div id="codexBody"></div>
         <div class="actions"><a class="btn ghost" data-go="back">Retour</a></div>
       </div>
@@ -107,9 +107,9 @@
       <div class="panel">
         <div class="panelTitle">Options</div>
         <div class="setting"><span class="lbl">Volume général</span><input type="range" id="optVolume" min="0" max="100"></div>
-        <div class="setting"><span class="lbl">Ambiance sonore</span><div class="seg" data-opt="music"><a data-v="1">Activée</a><a data-v="0">Coupée</a></div></div>
+        <div class="setting"><span class="lbl">Vent et ambiance</span><div class="seg" data-opt="music"><a data-v="1">Activée</a><a data-v="0">Coupée</a></div></div>
         <div class="setting"><span class="lbl">Défilement par les bords</span><div class="seg" data-opt="edgeScroll"><a data-v="1">Activé</a><a data-v="0">Désactivé</a></div></div>
-        <div class="setting"><span class="lbl">Grille stratégique</span><div class="seg" data-opt="grid"><a data-v="1">Affichée</a><a data-v="0">Masquée</a></div></div>
+        <div class="setting"><span class="lbl">Grille tactique</span><div class="seg" data-opt="grid"><a data-v="1">Affichée</a><a data-v="0">Masquée</a></div></div>
         <div class="setting"><span class="lbl">Portées affichées</span><div class="seg" data-opt="ranges"><a data-v="1">Sélection</a><a data-v="0">Jamais</a></div></div>
         <div class="actions"><a class="btn ghost" data-go="back">Retour</a></div>
       </div>
@@ -118,11 +118,11 @@
     <!-- Pause -->
     <div id="screenPause" class="screen hidden translucent">
       <div class="panel narrow">
-        <div class="panelTitle">Partie suspendue</div>
+        <div class="panelTitle">Convoi à l’arrêt</div>
         <nav class="mainNav small">
           <a id="btnResume">Reprendre</a>
           <a data-go="options">Options</a>
-          <a data-go="codex">Codex</a>
+          <a data-go="codex">Carnet</a>
           <a id="btnAbandon">Abandonner la partie</a>
         </nav>
       </div>

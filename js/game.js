@@ -24,6 +24,7 @@ class Game {
     this.stats = { killed: 0, lost: 0, mined: 0, structuresKilled: 0, structuresLost: 0, built: 0 };
     this.flags = {};
     this.visTimer = 0;
+    this.storm = { active: false, next: CONFIG.STORM_FIRST + Utils.rand(0, 60), t: 0, dur: 0, fade: 0 };
 
     World.generate(this);
     this.ai = new AI(this, FACTION.ENEMY, this.difficulty);
@@ -37,12 +38,26 @@ class Game {
   capUsed(f) { let n = 0; for (const u of this.units) if (!u.dead && u.faction === f) n += u.def.cap; for (const s of this.structures) if (!s.dead && s.faction === f) for (const q of s.queue) n += UNIT_TYPES[q.type].cap; return n; }
   capMax(f) { let n = 0; for (const s of this.structures) if (!s.dead && s.faction === f && !s.building) n += s.def.cap; return n; }
   log(text, cls) { if (this.ui) this.ui.log(text, cls); }
+  sensorFactor() { return this.storm.active ? CONFIG.STORM_SENSOR : 1; }
+
+  // Tempêtes de poussière : portée radio réduite pour tout le monde
+  updateStorm(dt) {
+    const st = this.storm;
+    if (st.active) {
+      st.t += dt; st.fade = Math.min(1, st.fade + dt / 4);
+      if (st.t >= st.dur) { st.active = false; st.next = this.time + Utils.rand(...CONFIG.STORM_GAP); this.log('La tempête se dissipe. Portée radio rétablie.', 'sys'); if (this.audio) this.audio.setStorm(false); }
+    } else {
+      st.fade = Math.max(0, st.fade - dt / 4);
+      if (this.time >= st.next) { st.active = true; st.t = 0; st.dur = Utils.rand(...CONFIG.STORM_DUR); this.log('Tempête de poussière en approche : portée radio réduite.', 'warn'); this.sfx('storm'); if (this.audio) this.audio.setStorm(true); }
+    }
+  }
   sfx(name, x, y) { if (this.audio) this.audio.play(name, x, y); }
 
   // ---------- Boucle ----------
   update(dt) {
     if (this.state !== 'playing' || this.paused) return;
     this.time += dt;
+    this.updateStorm(dt);
     for (const s of this.structures) if (!s.dead) this.updateStructure(s, dt);
     for (const u of this.units) if (!u.dead) this.updateUnit(u, dt);
     this.applySeparation();
@@ -89,21 +104,21 @@ class Game {
   // Journal du commandement de flotte : événements scénarisés
   scriptedEvents() {
     const f = this.flags, t = this.time;
-    if (!f.intro1 && t > 2.5) { f.intro1 = true; this.log('Sortie d’hyperespace réussie. Vaisseau‑mère opérationnel.', 'sys'); }
-    if (!f.intro2 && t > 7) { f.intro2 = true; this.log('Gisements détectés à proximité. Collecteurs déployés.', 'sys'); }
-    if (!f.intro3 && t > 14) { f.intro3 = true; this.log('Les capteurs longue portée relèvent une présence hostile dans ce secteur.', 'sys'); }
-    if (!f.contact && this.units.some(u => u.faction === FACTION.ENEMY && u.seen)) { f.contact = true; this.log('Contact : vaisseaux hostiles identifiés.', 'warn'); this.sfx('alert'); }
-    if (!f.enemyBase && this.structures.some(s => s.faction === FACTION.ENEMY && s.type === 'mothership' && s.seen)) { f.enemyBase = true; this.log('Vaisseau‑mère ennemi localisé. Objectif confirmé.', 'warn'); this.sfx('alert'); }
+    if (!f.intro1 && t > 2.5) { f.intro1 = true; this.log('Convoi déployé. Le Bastion est opérationnel.', 'sys'); }
+    if (!f.intro2 && t > 7) { f.intro2 = true; this.log('Décharges repérées à proximité. Récupérateurs en route.', 'sys'); }
+    if (!f.intro3 && t > 14) { f.intro3 = true; this.log('Interceptions radio : des Charognards rôdent dans la zone.', 'sys'); }
+    if (!f.contact && this.units.some(u => u.faction === FACTION.ENEMY && u.seen)) { f.contact = true; this.log('Contact visuel : véhicules hostiles.', 'warn'); this.sfx('alert'); }
+    if (!f.enemyBase && this.structures.some(s => s.faction === FACTION.ENEMY && s.type === 'mothership' && s.seen)) { f.enemyBase = true; this.log('Bastion ennemi localisé. Objectif confirmé.', 'warn'); this.sfx('alert'); }
     // Flotte hostile en approche
     if (!f.lastApproach || t - f.lastApproach > 45) {
       for (const s of this.structures) {
         if (s.dead || s.faction !== FACTION.PLAYER) continue;
         const n = this.units.filter(u => u.faction === FACTION.ENEMY && u.isCombat && u.seen && Utils.dist(u.x, u.y, s.x, s.y) < 900).length;
-        if (n >= 3) { f.lastApproach = t; this.log(`Alerte : flotte hostile en approche (${n} vaisseaux).`, 'warn'); this.sfx('alert'); break; }
+        if (n >= 3) { f.lastApproach = t; this.log(`Alerte : meute hostile en approche (${n} véhicules).`, 'warn'); this.sfx('alert'); break; }
       }
     }
     const base = this.playerBase();
-    if (base && t - base.lastHitTime < 0.3 && (!f.lastBaseHit || t - f.lastBaseHit > 30)) { f.lastBaseHit = t; this.log('Le vaisseau‑mère est attaqué !', 'warn'); this.sfx('alert'); }
+    if (base && t - base.lastHitTime < 0.3 && (!f.lastBaseHit || t - f.lastBaseHit > 30)) { f.lastBaseHit = t; this.log('Le Bastion est attaqué !', 'warn'); this.sfx('alert'); }
   }
 
   // ---------- Structures ----------
@@ -231,6 +246,15 @@ class Game {
   moveUnit(u, tx, ty, dt, stopDist = 6) {
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy);
     if (d <= stopDist) return true;
+    u.dustT = (u.dustT || 0) + dt;
+    if (u.dustT > 0.14 && u.seen && this.effects.length < 500) {
+      u.dustT = 0;
+      const def = Art.ships[u.type];
+      for (const tp of def.trail) {
+        const c = Math.cos(u.angle), sn = Math.sin(u.angle);
+        this.effects.push(new Effect('dust', { x: u.x + (tp[0] * c - tp[1] * sn) * u.radius, y: u.y + (tp[0] * sn + tp[1] * c) * u.radius, dur: 0.9 + u.radius * 0.03, size: u.radius * 0.9 }));
+      }
+    }
     const step = Math.min(d - stopDist + 0.01, u.speed * dt);
     u.x += dx / d * step; u.y += dy / d * step;
     const turn = u.def.cls === 'capital' ? 2.5 : u.def.cls === 'frigate' ? 4 : 10;
@@ -279,54 +303,75 @@ class Game {
     const ang = Utils.angleTo(src.x, src.y, t.x, t.y);
     const ox = src.x + Math.cos(ang) * src.radius * 0.8, oy = src.y + Math.sin(ang) * src.radius * 0.8;
     switch (def.weapon) {
-      case 'laser': {
+      case 'mg': case 'hmg': {
         t.takeDamage(dmg, this, src);
         const hx = t.x + Utils.rand(-t.radius * 0.5, t.radius * 0.5), hy = t.y + Utils.rand(-t.radius * 0.5, t.radius * 0.5);
-        this.effects.push(new Effect('beam', { x1: ox, y1: oy, x2: hx, y2: hy, dur: 0.1, color: col, width: 2 }));
-        this.effects.push(new Effect('hit', { x: hx, y: hy, dur: 0.2, size: 4, color: '#ffffff' }));
-        this.sfx('laser', src.x, src.y);
+        this.effects.push(new Effect('tracer', { x1: ox, y1: oy, x2: hx, y2: hy, dur: 0.09, heavy: def.weapon === 'hmg' }));
+        this.effects.push(new Effect('hit', { x: hx, y: hy, dur: 0.18, size: def.weapon === 'hmg' ? 5 : 3.5, color: '#ffe9b0' }));
+        this.effects.push(new Effect('muzzle', { x: ox, y: oy, angle: ang, dur: 0.06, size: src.radius * 0.6 }));
+        this.sfx(def.weapon, src.x, src.y);
         break;
       }
-      case 'ion': {
-        this.effects.push(new Effect('ion', { src, target: t, dur: 0.55, color: col, dmg, dealt: 0 }));
-        this.sfx('ion', src.x, src.y);
+      case 'cannon':
+        this.projectiles.push(new Projectile({ x: ox, y: oy, kind: 'shell', target: t, damage: dmg, faction: src.faction, owner: src, speed: 620, turn: 2.5, angle: ang, life: 2 }));
+        this.effects.push(new Effect('muzzle', { x: ox, y: oy, angle: ang, dur: 0.1, size: src.radius * 1.1 }));
+        this.sfx('cannon', src.x, src.y);
         break;
-      }
-      case 'flak': {
-        for (let i = 0; i < 2; i++) {
-          const a = ang + Utils.rand(-0.12, 0.12);
-          this.projectiles.push(new Projectile({ x: ox, y: oy, kind: 'flak', target: t, damage: dmg / 2, faction: src.faction, owner: src, speed: 520, turn: 6, angle: a, life: 0.9 }));
+      case 'rocket':
+        for (let i = 0; i < 4; i++) {
+          this.projectiles.push(new Projectile({ x: ox + Utils.rand(-6, 6), y: oy + Utils.rand(-6, 6), kind: 'rocket', target: t, damage: dmg / 4, faction: src.faction, owner: src, speed: 300 + i * 25, turn: 4.5, angle: ang + Utils.rand(-0.8, 0.8), life: 4, delay: i * 0.12 }));
         }
-        this.sfx('flak', src.x, src.y);
+        this.sfx('rocket', src.x, src.y);
+        break;
+      case 'arty': {
+        // Tir en cloche vers la position prévue de la cible
+        const lead = t.kind === 'unit' && t.order && t.moving ? 0.9 : 0;
+        const d = Utils.dist(ox, oy, t.x, t.y), dur = Utils.clamp(d / 260, 0.9, 1.8);
+        const tx = t.x + Math.cos(t.angle || 0) * (t.speed || 0) * lead * dur * 0.5, ty = t.y + Math.sin(t.angle || 0) * (t.speed || 0) * lead * dur * 0.5;
+        this.projectiles.push(new Projectile({ x: ox, y: oy, x0: ox, y0: oy, tx, ty, kind: 'arty', target: t, damage: dmg, faction: src.faction, owner: src, t: 0, dur, life: dur + 0.1, splash: 70, angle: ang }));
+        this.effects.push(new Effect('muzzle', { x: ox, y: oy, angle: ang, dur: 0.14, size: src.radius * 1.4 }));
+        this.effects.push(new Effect('dust', { x: src.x - Math.cos(ang) * src.radius, y: src.y - Math.sin(ang) * src.radius, dur: 1.2, size: src.radius * 1.2 }));
+        this.sfx('arty', src.x, src.y);
         break;
       }
-      case 'missile':
-        this.projectiles.push(new Projectile({ x: ox, y: oy, kind: 'missile', target: t, damage: dmg, faction: src.faction, owner: src, speed: 340, turn: 5, angle: ang + Utils.rand(-0.6, 0.6), life: 4 }));
-        this.sfx('missile', src.x, src.y);
-        break;
-      case 'plasma':
-        this.projectiles.push(new Projectile({ x: ox, y: oy, kind: 'plasma', target: t, damage: dmg, faction: src.faction, owner: src, speed: 250, turn: 1.3, angle: ang, life: 4 }));
-        this.sfx('plasma', src.x, src.y);
-        break;
     }
   }
   updateProjectile(p, dt) {
+    if (p.delay > 0) { p.delay -= dt; return; }
     p.life -= dt;
     if (p.life <= 0) { p.dead = true; return; }
+    if (p.kind === 'arty') {
+      p.t = Math.min(1, p.t + dt / p.dur);
+      p.x = p.x0 + (p.tx - p.x0) * p.t; p.y = p.y0 + (p.ty - p.y0) * p.t;
+      p.h = Math.sin(p.t * Math.PI) * Utils.dist(p.x0, p.y0, p.tx, p.ty) * 0.35;
+      if (p.t >= 1) {
+        p.dead = true;
+        for (const e of [...this.units, ...this.structures]) {
+          if (e.dead || e.faction === p.faction || e.faction === FACTION.NEUTRAL) continue;
+          const d = Utils.dist(p.x, p.y, e.x, e.y) - e.radius;
+          if (d <= p.splash) e.takeDamage(p.damage * this.damageMult(p.owner, e) / this.damageMult(p.owner, p.target) * (d <= 0 ? 1 : 1 - d / p.splash * 0.6), this, p.owner);
+        }
+        this.effects.push(new Effect('explosion', { x: p.x, y: p.y, dur: 0.7, size: 42, color: '#ffb060', debris: true }));
+        this.effects.push(new Effect('scorch', { x: p.x, y: p.y, dur: 40, size: 34 }));
+        this.effects.push(new Effect('dust', { x: p.x, y: p.y, dur: 1.6, size: 50 }));
+        this.sfx('explosion', p.x, p.y);
+      }
+      return;
+    }
     const t = p.target;
     if (t && !t.dead) {
       const d = Utils.normAngle(Utils.angleTo(p.x, p.y, t.x, t.y) - p.angle);
       const maxTurn = p.turn * dt;
       p.angle += Utils.clamp(d, -maxTurn, maxTurn);
     }
-    if (p.kind !== 'flak') { p.trail.push({ x: p.x, y: p.y }); if (p.trail.length > 7) p.trail.shift(); }
+    if (p.kind === 'rocket') { p.trail.push({ x: p.x, y: p.y, t: this.time }); if (p.trail.length > 10) p.trail.shift(); }
     p.x += Math.cos(p.angle) * p.speed * dt; p.y += Math.sin(p.angle) * p.speed * dt;
     if (t && !t.dead && Utils.dist(p.x, p.y, t.x, t.y) <= t.radius + 4) {
       t.takeDamage(p.damage, this, p.owner);
       p.dead = true;
-      const big = p.kind === 'plasma';
-      this.effects.push(new Effect('explosion', { x: p.x, y: p.y, dur: big ? 0.5 : 0.25, size: big ? 26 : p.kind === 'flak' ? 6 : 12, color: FACTION_COLORS[p.faction].team }));
-      if (big) this.sfx('explosion', p.x, p.y);
+      const shell = p.kind === 'shell';
+      this.effects.push(new Effect('explosion', { x: p.x, y: p.y, dur: shell ? 0.35 : 0.3, size: shell ? 16 : 13, color: '#ffb060' }));
+      if (shell) this.sfx('explosion', p.x, p.y);
     } else if (p.x < -50 || p.y < -50 || p.x > this.W + 50 || p.y > this.H + 50) p.dead = true;
   }
 
@@ -363,7 +408,9 @@ class Game {
     if (e.kind !== 'unit' && e.kind !== 'structure') return;
     const col = FACTION_COLORS[e.faction].team;
     const big = e.kind === 'structure' || e.def.cls === 'capital';
-    this.effects.push(new Effect('explosion', { x: e.x, y: e.y, dur: big ? 1.4 : 0.6, size: e.radius * 2.4, color: col, debris: big }));
+    this.effects.push(new Effect('explosion', { x: e.x, y: e.y, dur: big ? 1.4 : 0.6, size: e.radius * 2.4, color: '#ffb060', debris: big }));
+    this.effects.push(new Effect('scorch', { x: e.x, y: e.y, dur: big ? 120 : 45, size: e.radius * 1.6, wreck: e.kind === 'unit' ? e.type : null, faction: e.faction, angle: e.angle || 0 }));
+    this.effects.push(new Effect('dust', { x: e.x, y: e.y, dur: 1.8, size: e.radius * 2.2 }));
     if (e.seen || e.faction === FACTION.PLAYER) this.sfx(big ? 'bigExplosion' : 'explosion', e.x, e.y);
     if (e.kind === 'unit') {
       if (e.faction === FACTION.PLAYER) this.stats.lost++; else this.stats.killed++;
@@ -395,11 +442,11 @@ class Game {
   startResearch(faction, id) {
     const module = this.structures.find(s => !s.dead && s.faction === faction && s.type === 'research' && !s.building);
     const player = faction === FACTION.PLAYER;
-    if (!module) { if (player) { this.log('Aucun module de recherche opérationnel.', 'warn'); this.sfx('error'); } return false; }
+    if (!module) { if (player) { this.log('Aucun laboratoire opérationnel.', 'warn'); this.sfx('error'); } return false; }
     if (module.research) { if (player) { this.log('Une recherche est déjà en cours.', 'warn'); this.sfx('error'); } return false; }
     if (!this.canResearch(faction, id)) return false;
     const r = RESEARCH[id];
-    if (this.ru[faction] < r.cost) { if (player) { this.log('Ressources insuffisantes.', 'warn'); this.sfx('error'); } return false; }
+    if (this.ru[faction] < r.cost) { if (player) { this.log('Ferraille insuffisante.', 'warn'); this.sfx('error'); } return false; }
     this.ru[faction] -= r.cost;
     module.research = { id, progress: 0 };
     if (player) this.sfx('confirm');
@@ -420,7 +467,7 @@ class Game {
       for (const u of this.units) if (u.faction === faction) { u.maxHp *= k; u.hp *= k; }
       for (const s of this.structures) if (s.faction === faction) { s.maxHp *= k; s.hp *= k; }
     }
-    if (faction === FACTION.PLAYER) { this.log(`Recherche terminée : ${r.name}.`, 'good'); this.sfx('research'); }
+    if (faction === FACTION.PLAYER) { this.log(`Amélioration terminée : ${r.name}.`, 'good'); this.sfx('research'); }
   }
 
   // ---------- Requêtes spatiales ----------
@@ -542,7 +589,7 @@ class Game {
     const player = s.faction === FACTION.PLAYER;
     if (r !== 'ok') {
       if (player) {
-        const msg = { requires: 'Nécessite un chantier naval.', queue: 'File de production pleine.', cap: 'Capacité de flotte atteinte : construisez un chantier naval.', ru: 'Ressources insuffisantes.' }[r];
+        const msg = { requires: 'Nécessite un atelier.', queue: 'File de production pleine.', cap: 'Convoi au complet : construisez un atelier pour l’agrandir.', ru: 'Ferraille insuffisante.' }[r];
         if (msg) { this.log(msg, 'warn'); this.sfx('error'); }
       }
       return false;
@@ -569,7 +616,7 @@ class Game {
     const player = faction === FACTION.PLAYER;
     if (def.max && this.structures.filter(s => !s.dead && s.faction === faction && s.type === type).length >= def.max) { if (player) { this.log(`Un seul ${def.name.toLowerCase()} autorisé.`, 'warn'); this.sfx('error'); } return null; }
     if (!this.canPlace(type, x, y, faction)) { if (player) { this.log('Emplacement invalide : construisez à portée d’un bâtiment allié.', 'warn'); this.sfx('error'); } return null; }
-    if (this.ru[faction] < def.cost) { if (player) { this.log('Ressources insuffisantes.', 'warn'); this.sfx('error'); } return null; }
+    if (this.ru[faction] < def.cost) { if (player) { this.log('Ferraille insuffisante.', 'warn'); this.sfx('error'); } return null; }
     this.ru[faction] -= def.cost;
     const s = new Structure(type, x, y, faction, this, false);
     this.structures.push(s);

@@ -1,10 +1,10 @@
-# Nebula Command
+# Dernier Convoi
 
-Jeu de stratégie en temps réel dans l'espace, jouable dans le navigateur.
+Jeu de stratégie en temps réel dans les Terres désolées, jouable dans le navigateur.
 HTML5 Canvas et JavaScript pur : aucune dépendance, aucun outil de build.
 
-Inspirations assumées : l'esthétique et les tactiques de flotte de *Homeworld*,
-le zoom stratégique de *Supreme Commander*, la lisibilité et les contres de *StarCraft*.
+Quarante et un ans après la Chute, deux convois se disputent un territoire jonché d'épaves.
+Vous menez les Convoyeurs. En face, les Charognards.
 
 ## Lancer le jeu
 
@@ -18,75 +18,77 @@ puis rendez-vous sur <http://localhost:8000>.
 
 ## La partie
 
-Votre **vaisseau‑mère** sort d'hyperespace dans un coin du secteur, celui de l'adversaire dans le coin opposé.
-Les **collecteurs** extraient des minéraux des astéroïdes. Les minéraux financent vaisseaux, structures et technologies.
-**Objectif : détruire toutes les structures ennemies.**
+Votre **Bastion** se déploie dans un coin du territoire, celui des Charognards dans le coin opposé.
+Les **récupérateurs** découpent la **ferraille** des décharges et des épaves qui bordent l'autoroute abandonnée.
+La ferraille paie véhicules, bâtiments et améliorations.
+**Objectif : détruire tous les bâtiments ennemis.**
 
-- **Brouillard de guerre.** Seuls vos capteurs révèlent l'ennemi. Éclaireurs et relais de capteurs étendent votre vision.
-- **Capacité de flotte.** Chaque vaisseau occupe des points de commandement. Le vaisseau‑mère en fournit 24, chaque chantier naval 12.
-- **Contres.** Intercepteurs > Destroyers > Frégates > Corvettes > Intercepteurs. La frégate ionique perce les vaisseaux capitaux et les structures.
-- **Tactiques.** Agressif (poursuit tout ce qu'il détecte), Neutre (engage à portée puis revient), Évasif (se replie s'il est attaqué).
-- **Formations.** Libre, Delta, Mur, Colonne. Appliquées à chaque ordre de déplacement.
-- **Recherche.** Blindage, armement, propulsion, extraction, capteurs, depuis le module de recherche.
-- **Réparation.** Les vaisseaux endommagés se réparent près du vaisseau‑mère ou d'un chantier.
-- **Zoom stratégique.** En dézoomant, la flotte s'affiche en icônes tactiques sur une grille.
+- **Brouillard de guerre.** Seuls vos détecteurs révèlent l'ennemi. Motards et miradors étendent votre vision.
+- **Tempêtes de poussière.** Elles réduisent la portée de détection de tout le monde. Le moment idéal pour un coup de main.
+- **Places du convoi.** Chaque véhicule occupe des places. Le Bastion en offre 24, chaque atelier 12.
+- **Contres.** Buggys > Chars lourds > Blindés > Technicals > Buggys. Le lance‑roquettes perce les chars lourds et les bunkers.
+- **Tactiques.** Agressif (poursuit tout ce qu'il repère), Neutre (engage à portée puis revient), Évasif (se replie s'il est attaqué).
+- **Formations.** Libre, Delta, Ligne, Colonne, appliquées à chaque ordre de déplacement.
+- **Améliorations.** Blindage, munitions, moteurs, récupération, radio, depuis le laboratoire.
+- **Réparation.** Les véhicules abîmés se réparent près du Bastion ou d'un atelier.
+- **Zoom tactique.** En dézoomant, les véhicules s'affichent en icônes sur une grille.
 
-## Vaisseaux
+## Véhicules
 
-| Vaisseau | Classe | Coût | Points | Rôle |
+| Véhicule | Classe | Coût | Places | Rôle |
 |---|---|---|---|---|
-| Collecteur | Utilitaire | 60 | 1 | Extraction |
-| Éclaireur | Chasseur | 40 | 1 | Capteurs longue portée |
-| Intercepteur | Chasseur | 70 | 1 | Harcèle les vaisseaux capitaux |
-| Corvette | Corvette | 120 | 2 | Antichasseurs |
-| Frégate d'assaut | Frégate | 220 | 3 | Ligne polyvalente, écrase les corvettes |
-| Frégate ionique | Frégate | 270 | 3 | Anti‑capital, anti‑structure |
-| Destroyer | Capital | 620 | 6 | Artillerie lourde, nécessite un chantier |
+| Récupérateur | Utilitaire | 60 | 1 | Récupération de ferraille |
+| Motard | Léger | 40 | 1 | Éclaireur, détection longue portée |
+| Buggy | Léger | 70 | 1 | Harcèle les chars lourds |
+| Technical | Moyen | 120 | 2 | Anti‑véhicules légers |
+| Blindé d'assaut | Blindé | 220 | 3 | Ligne polyvalente, écrase les technicals |
+| Lance‑roquettes | Blindé | 270 | 3 | Anti‑chars, anti‑bâtiments |
+| Char lourd | Char lourd | 620 | 6 | Obusier à dégâts de zone, nécessite un atelier |
 
-## Structures
+## Bâtiments
 
-| Structure | Coût | Rôle |
+| Bâtiment | Coût | Rôle |
 |---|---|---|
-| Vaisseau‑mère | — | Production, dépôt, réparation, 24 points de flotte |
-| Chantier naval | 420 | Frégates et destroyers, +12 points de flotte |
-| Plateforme de défense | 150 | Tourelle laser |
-| Module de recherche | 320 | Technologies (un seul) |
-| Relais de capteurs | 110 | Vision étendue |
+| Bastion | — | Production, dépôt, réparation, 24 places |
+| Atelier | 420 | Blindés et chars, +12 places |
+| Bunker | 150 | Mitrailleuse lourde |
+| Laboratoire | 320 | Améliorations (un seul) |
+| Mirador | 110 | Détection étendue |
 
 ## Contrôles
 
 | Action | Commande |
 |---|---|
 | Sélectionner | Clic gauche / glisser · Maj : ajouter · double‑clic : même type à l'écran |
-| Ordre contextuel | Clic droit : déplacer, attaquer, extraire, décharger, point de ralliement |
+| Ordre contextuel | Clic droit : déplacer, attaquer, récupérer, décharger, point de ralliement |
 | Attaque en mouvement | `A` puis clic |
 | Stop | `S` |
 | Tactique | `G` agressif · `N` neutre · `V` évasif |
-| Formation | `F1` libre · `F2` delta · `F3` mur · `F4` colonne |
+| Formation | `F1` libre · `F2` delta · `F3` ligne · `F4` colonne |
 | Groupes | `Ctrl + 1‑5` assigner · `1‑5` rappeler (deux fois : centrer) |
-| Production | Vaisseau‑mère sélectionné : `C` `E` `I` `V` `F` `N` `D` |
-| Construction / recherche | `B` / `R`, ou `T` `P` `M` `L` directement |
+| Production | Bastion sélectionné : `C` `E` `I` `V` `F` `N` `D` |
+| Construction / améliorations | `B` / `R`, ou `T` `P` `M` `L` directement |
 | Caméra | Flèches, bords de l'écran, clic milieu, minimap, molette |
 | Divers | `Espace` centrer · `P` pause · `+` / `-` vitesse · `Échap` annuler / menu |
 
-Le codex en jeu détaille chaque vaisseau, ses contres et la doctrine.
+Le carnet du convoi, en jeu, détaille chaque véhicule, ses contres et la doctrine.
 
 ## Structure du code
 
 ```
 index.html        Page, HUD et écrans
-css/style.css     Style de l'interface
+css/style.css     Thème rouille et poussière
 js/utils.js       Utilitaires
-js/config.js      Données : unités, structures, recherche, tactiques, difficultés
-js/art.js         Art vectoriel des vaisseaux, structures et icônes stratégiques
-js/audio.js       Ambiance et effets sonores synthétisés (WebAudio)
-js/entities.js    Classes Asteroid, Unit, Structure, Projectile, Effect
-js/world.js       Génération de la carte (ceinture, champs, poussière)
-js/ai.js          IA : économie, contre‑composition, défense, vagues, recherche
-js/game.js        Simulation : ordres, tactiques, formations, combat, brouillard, recherche
-js/renderer.js    Rendu, brouillard de guerre, zoom stratégique, minimap
+js/config.js      Données : véhicules, bâtiments, améliorations, tactiques, difficultés
+js/art.js         Art vectoriel vu de dessus : véhicules, bâtiments, icônes tactiques
+js/audio.js       Vent, tempêtes et effets sonores synthétisés (WebAudio)
+js/entities.js    Classes Asteroid (décharge), Unit, Structure, Projectile, Effect
+js/world.js       Terrain : autoroute, décharges, ruines, cratères, texture du sol
+js/ai.js          IA : économie, contre‑composition, défense, raids, améliorations
+js/game.js        Simulation : ordres, tactiques, formations, armes, tempêtes, brouillard
+js/renderer.js    Rendu du terrain, brouillard, zoom tactique, tempêtes, minimap
 js/input.js       Souris, clavier, caméra
-js/ui.js          HUD : sélection, commandes, construction, recherche, journal
-js/menu.js        Menu principal, escarmouche, codex, options, pause, fin
-js/main.js        Assemblage et boucle
+js/ui.js          HUD : sélection, commandes, construction, améliorations, radio
+js/menu.js        Menu principal, escarmouche, carnet, options, pause, fin
+js/main.js        Assemblage et boucle protégée
 ```
