@@ -1,8 +1,8 @@
 // ============ Simulation de la partie ============
 class Game {
   constructor(opts, audio) {
-    MAP.init();
-    this.opts = opts; this.audio = audio; this.ui = null;
+    MAP.init(); NEXT_ID = 1;
+    this.opts = opts; this.audio = audio; this.ui = null; this.net = null; this.remote = null;
     this.diff = DIFFICULTY[opts.difficulty] || DIFFICULTY.normal;
     this.time = 0; this.paused = false; this.state = 'playing'; this.endAt = 0; this.winner = null;
     this.heroes = []; this.minions = []; this.monsters = []; this.towers = []; this.inhibs = []; this.nexuses = [];
@@ -33,18 +33,36 @@ class Game {
     }
   }
   setupHeroes(o) {
-    // o.blue / o.red : listes { id, role } ; le premier bleu est le joueur
-    o.blue.forEach((p, i) => { const h = new Hero(p.id, 0, this, { player: i === 0, role: p.role }); if (i > 0 || o.autoPlayer) h.bot = new HeroBot(this, h); this.heroes.push(h); });
-    o.red.forEach(p => { const h = new Hero(p.id, 1, this, { role: p.role }); h.bot = new HeroBot(this, h); this.heroes.push(h); });
+    // o.blue / o.red : listes { id, role, human, peer, nick, me } ; « me » désigne le héros de ce poste
+    const client = o.mode === 'client';
+    [o.blue, o.red].forEach((list, team) => list.forEach(p => {
+      const h = new Hero(p.id, team, this, { player: !!p.me, role: p.role });
+      h.human = !!p.human; h.peer = p.peer || null; h.nick = p.nick || '';
+      if (!client && (!p.human || (p.me && o.autoPlayer))) h.bot = new HeroBot(this, h);
+      this.heroes.push(h);
+    }));
     for (const team of [0, 1]) this.heroes.filter(h => h.team === team).forEach((h, i) => { const f = MAP.fountains[team], a = i * 1.25; h.x = h.px = f.x + Math.cos(a) * 70; h.y = h.py = f.y + Math.sin(a) * 70; });
   }
 
   // ---------- Accès ----------
+  // Présentation : tout ce qui part vers l'écran passe par ici, pour le joueur local
+  // comme pour les joueurs distants (l'hôte relaie ces événements sur le réseau).
   log(text, cls) { if (this.ui) this.ui.toast(text, cls); }
-  sfx(name, x, y) { if (this.audio) this.audio.play(name, x, y); }
-  fx(type, props) { if (this.effects.length < 500) this.effects.push(new Effect(type, props)); }
-  float(text, x, y, color, big) { if (this.floats.length < 80) this.floats.push({ text: String(text), x: x + Utils.rand(-8, 8), y, color, big, t: 0, dur: 0.9 }); }
-  announce(title, sub, cls, icon) { if (this.ui) this.ui.announce(title, sub, cls, icon); }
+  watched(u) { return !!u && u.kind === 'hero' && (u.isPlayer || u.human); }
+  notify(h, text, cls) { if (h === this.player) this.log(text, cls); else if (this.net && h.human) this.net.event(['t', h.id, text, cls || ''], true); }
+  sfx(name, x, y) { if (this.audio) this.audio.play(name, x, y); if (this.net) this.net.event(['s', name, x === undefined ? -1 : Math.round(x), y === undefined ? -1 : Math.round(y)]); }
+  sfxFor(h, name) { if (h === this.player) { if (this.audio) this.audio.play(name); } else if (this.net && h.human) this.net.event(['s', name, -1, -1, h.id]); }
+  fx(type, props) { if (this.effects.length < 500) this.effects.push(new Effect(type, props)); if (this.net) this.net.fx(type, props); }
+  float(text, x, y, color, big, owner) {
+    x += Utils.rand(-8, 8);
+    if ((!owner || owner === this.player) && this.floats.length < 80) this.floats.push({ text: String(text), x, y, color, big, t: 0, dur: 0.9 });
+    if (this.net && owner && owner.human && owner !== this.player) this.net.event(['f', owner.id, String(text), Math.round(x), Math.round(y), color, big ? 1 : 0]);
+  }
+  say(key, data, only) {
+    if (this.ui && (!only || only === this.player)) { const a = narrate(this, key, data, this.player); if (a) this.ui.announce(a[0], a[1], a[2]); }
+    if (this.net) this.net.event(['a', key, data, only ? only.id : 0], true);
+  }
+  feedKill(killer, v, assisters) { if (this.ui) this.ui.feed(killer, v, assisters); if (this.net) this.net.event(['k', killer ? killer.id : 0, v.id, assisters.length], true); }
   inShop(h) { const f = MAP.fountains[h.team]; return Utils.dist(h.x, h.y, f.x, f.y) <= CONFIG.SHOP_R; }
   canShop(h) { return h.dead || this.inShop(h); }
   structures() { return [...this.towers, ...this.inhibs, ...this.nexuses]; }
@@ -88,6 +106,7 @@ class Game {
 
   // ---------- Boucle ----------
   update(dt) {
+    if (this.remote) { this.remote.tick(dt); return; }
     if (this.paused) return;
     this.time += dt;
     if (this.state === 'playing') {
@@ -97,7 +116,7 @@ class Game {
       for (const m of this.minions) if (!m.dead) this.updateMinion(m, dt);
       for (const m of this.monsters) if (!m.dead) this.updateMonster(m, dt);
       for (const tw of this.towers) if (!tw.dead) this.updateTower(tw, dt);
-      for (const i of this.inhibs) if (i.dead && this.time >= i.respawnAt) { i.dead = false; i.hp = i.maxHp; this.announce('Inhibiteur reconstruit', i.team === 0 ? 'Notre ' + LANE_NAMES[i.lane].toLowerCase() + ' est de nouveau protégée' : 'Les Charognards ont réparé leur inhibiteur', 'info'); }
+      for (const i of this.inhibs) if (i.dead && this.time >= i.respawnAt) { i.dead = false; i.hp = i.maxHp; this.say('inhibBack', { team: i.team, lane: i.lane }); }
       for (const p of this.projectiles) if (!p.dead) this.updateProjectile(p, dt);
       for (const z of this.zones) if (!z.dead) this.updateZone(z, dt);
       this.updateDots(dt);
@@ -146,7 +165,7 @@ class Game {
       types.push('ranged', 'ranged', 'ranged');
       types.forEach((type, i) => this.spawnQueue.push({ team, lane, type, at: this.time + i * 0.7 }));
     }
-    if (this.waveN === 1) { this.announce('Les pillards arrivent', 'Les premières vagues partent sur les trois voies', 'info'); this.sfx('horn'); }
+    if (this.waveN === 1) { this.say('waves', {}); this.sfx('horn'); }
   }
   processSpawns() {
     if (!this.spawnQueue.length || this.spawnQueue[0].at > this.time) { if (!this.spawnQueue.some(s => s.at <= this.time)) return; }
@@ -169,7 +188,7 @@ class Game {
         const m = new Monster(type, c, c.x + Math.cos(a) * d, c.y + Math.sin(a) * d);
         m.angle = Utils.angleTo(m.x, m.y, 2500, 2500); this.monsters.push(m); return m;
       });
-      if (c.epic) this.announce(c.name, c.id === 'worm' ? 'Le Ver des sables émerge dans la rivière' : 'Le Titan de rouille s’est réveillé', 'info');
+      if (c.epic) this.say('epic', { id: c.id });
     }
   }
   aggroCamp(m, src) {
@@ -212,11 +231,11 @@ class Game {
     if (c.id === 'worm') {
       this.dragons[team]++;
       for (const h of this.heroes) if (h.team === team) h.gold += 75;
-      this.announce('Ver des sables vaincu', `${TEAM_INFO[team].name} : +${this.dragons[team] * 6} % de dégâts pour toute l’équipe`, team === 0 ? 'good' : 'bad');
+      this.say('worm', { team, n: this.dragons[team] });
     } else if (c.id === 'titan') {
       for (const h of this.heroes) if (h.team === team && !h.dead) this.addBuff(h, { id: 'titan', dur: BUFFS.titan.dur, stats: { ad: 40, ap: 40 } });
       for (const h of this.heroes) if (h.team === team) h.gold += 200;
-      this.announce('Titan de rouille abattu', `${TEAM_INFO[team].name} reçoivent la Faveur du Titan`, team === 0 ? 'good' : 'bad');
+      this.say('titan', { team });
     }
   }
 
@@ -344,7 +363,7 @@ class Game {
   issueStop(h) { h.order = null; if (h.channel && h.channel.cancelOnMove) this.endChannel(h, true); }
   startRecall(h) { if (h.dead || h.recall || h.dash || h.channel) return; h.order = null; h.recall = { start: this.time, end: this.time + CONFIG.RECALL_TIME }; this.sfx('recall', h.x, h.y); }
   canCast(h, slot) { const r = h.ranks[slot]; if (!r || h.cds[slot] > 0) return false; return h.mana >= ABILITIES[h.def.abilities[slot]].cost[r - 1]; }
-  castFail(h, msg) { if (h.isPlayer && msg) { this.log(msg, 'warn'); this.sfx('error'); } return false; }
+  castFail(h, msg) { if (msg && this.watched(h)) { this.notify(h, msg, 'warn'); this.sfxFor(h, 'error'); } return false; }
   findAbilityTarget(h, ab, x, y) {
     if (ab.aim === 'ally') { let best = null, bd = 170; for (const a of this.heroes) { if (a.dead || a.team !== h.team) continue; const d = Utils.dist(a.x, a.y, x, y); if (d < bd && Utils.dist(h.x, h.y, a.x, a.y) <= ab.range + 40) { bd = d; best = a; } } return best || h; }
     let best = null, bd = Infinity;
@@ -377,14 +396,14 @@ class Game {
   }
   useSpell(h, i, x, y) {
     if (h.dead || h.stunned(this.time) || h.dash) return false;
-    if (h.spellCds[i] > 0) { if (h.isPlayer) this.castFail(h, 'Sort pas encore prêt'); return false; }
+    if (h.spellCds[i] > 0) return this.castFail(h, 'Sort pas encore prêt');
     if (h.recall) h.recall = null;
     if (h.channel && h.channel.cancelOnMove) this.endChannel(h, true);
     const sp = SPELLS[h.spells[i]];
     if (sp.cast(this, h, x, y) !== false) h.spellCds[i] = sp.cd;
     return true;
   }
-  levelUp(h, slot) { if (!h.canLevel(slot)) return false; h.ranks[slot]++; h.points--; if (h.isPlayer) this.sfx('skillUp'); return true; }
+  levelUp(h, slot) { if (!h.canLevel(slot)) return false; h.ranks[slot]++; h.points--; this.sfxFor(h, 'skillUp'); return true; }
   useItem(h, idx) {
     const s = h.items[idx]; if (!s || h.dead) return false;
     if (s.id === 'potion') { h.potions.push({ until: this.time + 12, rate: 150 / 12 }); s.n--; if (s.n <= 0) h.items.splice(idx, 1); this.fx('healBurst', { target: h, dur: 1 }); this.sfx('heal', h.x, h.y); return true; }
@@ -410,21 +429,21 @@ class Game {
       if (h.gold < it.recipe) return this.castFail(h, 'Pas assez d’or');
       if (!slot && h.items.length >= 6) return this.castFail(h, 'Inventaire plein');
       h.gold -= it.recipe; if (slot) slot.n++; else h.items.push({ id, n: 1 });
-      if (h.isPlayer) this.sfx('buy'); return true;
+      this.sfxFor(h, 'buy'); return true;
     }
     const { price, used } = this.priceFor(h, id);
     if (h.gold < price) return this.castFail(h, 'Pas assez d’or');
     if (h.items.length - used.size + 1 > 6) return this.castFail(h, 'Inventaire plein : revendez un objet');
     h.items = h.items.filter((s, i) => !used.has(i));
     h.items.push({ id }); h.gold -= price; h.recompute();
-    if (h.isPlayer) this.sfx('buy');
+    this.sfxFor(h, 'buy');
     return true;
   }
   sell(h, idx) {
     if (!this.canShop(h) || idx >= h.items.length) return false;
     const s = h.items.splice(idx, 1)[0], it = ITEMS[s.id];
     h.gold += Math.round(it.consumable ? it.recipe * 0.5 * s.n : it.cost * 0.7); h.recompute();
-    if (h.isPlayer) this.sfx('buy');
+    this.sfxFor(h, 'buy');
     return true;
   }
 
@@ -538,7 +557,7 @@ class Game {
     const a = amt * (1 + (src && src.st && src.st.healPower || 0)), before = u.hp;
     u.hp = Math.min(u.maxHp, u.hp + a);
     const got = u.hp - before;
-    if (got >= 1 && (u === this.player || src === this.player)) this.float('+' + Math.round(got), u.x, u.y, '#8cff7a');
+    if (got >= 1) { if (this.watched(u)) this.float('+' + Math.round(got), u.x, u.y, '#8cff7a', false, u); if (this.watched(src) && src !== u) this.float('+' + Math.round(got), u.x, u.y, '#8cff7a', false, src); }
     return got;
   }
 
@@ -560,7 +579,7 @@ class Game {
     const t = this.time;
     if (tg.status.shields.length) for (const s of tg.status.shields) { if (s.until <= t || dmg <= 0) continue; const a = Math.min(s.amt, dmg); s.amt -= a; dmg -= a; }
     tg.hp -= dmg; tg.lastHit = t;
-    if (tg.kind === 'hero') { if (tg.recall) { tg.recall = null; if (tg.isPlayer) this.log('Retour interrompu', 'warn'); } if (src && src.kind === 'hero') tg.damagedBy.set(src.id, t); if (opt.basic && tg.st.thorns && src && !src.dead) this.damage(tg, src, dmg * tg.st.thorns, 'magic'); }
+    if (tg.kind === 'hero') { if (tg.recall) { tg.recall = null; this.notify(tg, 'Retour interrompu', 'warn'); } if (src && src.kind === 'hero') tg.damagedBy.set(src.id, t); if (opt.basic && tg.st.thorns && src && !src.dead) this.damage(tg, src, dmg * tg.st.thorns, 'magic'); }
     if (tg.kind === 'monster' && src) this.aggroCamp(tg, src.kind === 'turretZone' ? null : src);
     if (src && src.kind === 'hero') {
       src.lastCombat = t;
@@ -568,8 +587,11 @@ class Game {
       if (opt.basic && src.st.lifesteal) src.hp = Math.min(src.maxHp, src.hp + dmg * src.st.lifesteal);
       if (tg.kind === 'hero') this.callForHelp(src, tg);
     }
-    if (dmg >= 1 && !opt.silent && this.player && (src === this.player || tg === this.player))
-      this.float(Math.round(dmg) + (opt.crit ? '!' : ''), tg.x, tg.y, tg === this.player ? '#ff6a5a' : opt.crit ? '#ff9a3a' : type === 'magic' ? '#9fd8ff' : type === 'true' ? '#ffffff' : '#ffd27a', opt.crit || dmg > 150);
+    if (dmg >= 1 && !opt.silent) {
+      const txt = Math.round(dmg) + (opt.crit ? '!' : '');
+      if (this.watched(tg)) this.float(txt, tg.x, tg.y, '#ff6a5a', opt.crit || dmg > 150, tg);
+      if (this.watched(src)) this.float(txt, tg.x, tg.y, opt.crit ? '#ff9a3a' : type === 'magic' ? '#9fd8ff' : type === 'true' ? '#ffffff' : '#ffd27a', opt.crit || dmg > 150, src);
+    }
     if (tg.hp <= 0) { tg.hp = 0; this.kill(tg, src); }
     return dmg;
   }
@@ -583,7 +605,7 @@ class Game {
     const t = this.time;
     const killerHero = src && src.kind === 'hero' ? src : null;
     if (u.kind === 'minion') {
-      if (killerHero) { const gold = u.def.gold + Math.floor(t / 90); killerHero.gold += gold; killerHero.cs++; if (killerHero.isPlayer) { this.float('+' + gold, u.x, u.y, '#ffd34d', true); this.sfx('gold'); } }
+      if (killerHero) { const gold = u.def.gold + Math.floor(t / 90); killerHero.gold += gold; killerHero.cs++; if (this.watched(killerHero)) { this.float('+' + gold, u.x, u.y, '#ffd34d', true, killerHero); this.sfxFor(killerHero, 'gold'); } }
       this.shareXp(1 - u.team, u.x, u.y, u.def.xp);
       this.fx('death', { x: u.x, y: u.y, size: u.radius * 1.6, dur: 0.7, team: u.team });
       if (u.def.siege || u.def.super) this.fx('explosion', { x: u.x, y: u.y, size: 50, dur: 0.8 });
@@ -591,8 +613,8 @@ class Game {
       const k = killerHero || (src && src.kind === 'minion' ? null : null);
       if (k) {
         k.gold += u.def.gold; k.cs += u.def.epic ? 4 : 2; this.addXp(k, u.def.xp);
-        if (k.isPlayer) { this.float('+' + u.def.gold, u.x, u.y, '#ffd34d', true); this.sfx('gold'); }
-        if (u.def.buff) { this.addBuff(k, { id: u.def.buff, dur: BUFFS[u.def.buff].dur, stats: u.def.buff === 'blue' ? { cdr: 0.2, manaRegen: 6 } : {} }); if (k.isPlayer) this.announce(BUFFS[u.def.buff].name, BUFFS[u.def.buff].desc, 'good'); }
+        if (this.watched(k)) { this.float('+' + u.def.gold, u.x, u.y, '#ffd34d', true, k); this.sfxFor(k, 'gold'); }
+        if (u.def.buff) { this.addBuff(k, { id: u.def.buff, dur: BUFFS[u.def.buff].dur, stats: u.def.buff === 'blue' ? { cdr: 0.2, manaRegen: 6 } : {} }); if (this.watched(k)) this.say('buff', { id: u.def.buff }, k); }
         if (u.def.epic) for (const h of this.heroes) if (h.team === k.team && h !== k && !h.dead) this.addXp(h, u.def.xp * 0.5);
       }
       this.fx('death', { x: u.x, y: u.y, size: u.radius * 1.6, dur: 0.8, team: 2 });
@@ -604,17 +626,17 @@ class Game {
       for (const h of this.heroes) if (h.team !== u.team) h.gold += 150;
       this.rubble.push({ x: u.x, y: u.y, r: u.radius, team: u.team, seed: Math.random() });
       this.fx('explosion', { x: u.x, y: u.y, size: 110, dur: 1.6 }); this.sfx('towerFall', u.x, u.y);
-      this.announce(u.team === 0 ? 'Tourelle perdue' : 'Tourelle détruite', u.lane ? LANE_NAMES[u.lane] : 'Défense du réacteur', u.team === 0 ? 'bad' : 'good');
+      this.say('tower', { team: u.team, lane: u.lane || '' });
     } else if (u.kind === 'inhib') {
       u.respawnAt = t + CONFIG.INHIB_RESPAWN;
       for (const h of this.heroes) if (h.team !== u.team) h.gold += 50;
       this.fx('explosion', { x: u.x, y: u.y, size: 100, dur: 1.4 }); this.sfx('towerFall', u.x, u.y);
-      this.announce(u.team === 0 ? 'Inhibiteur détruit' : 'Inhibiteur ennemi détruit', u.team === 0 ? 'Des mastodontes ennemis vont déferler' : 'Nos mastodontes vont déferler', u.team === 0 ? 'bad' : 'good');
+      this.say('inhib', { team: u.team });
     } else if (u.kind === 'nexus') {
       this.state = 'over'; this.winner = 1 - u.team; this.endAt = t + 3.5;
       this.fx('explosion', { x: u.x, y: u.y, size: 260, dur: 3 }); this.sfx('coreFall', u.x, u.y);
       this.camera.locked = false; this.camera.focus = { x: u.x, y: u.y };
-      this.announce(this.winner === 0 ? 'Victoire' : 'Défaite', this.winner === 0 ? 'Le réacteur des Charognards a sauté' : 'Notre réacteur a sauté', this.winner === 0 ? 'good' : 'bad');
+      this.say('end', { winner: this.winner });
     }
   }
   shareXp(team, x, y, amount) { const rec = this.heroes.filter(h => !h.dead && h.team === team && Utils.dist(h.x, h.y, x, y) <= CONFIG.XP_RANGE); if (!rec.length) return; const each = rec.length === 1 ? amount : amount * 1.25 / rec.length; for (const h of rec) this.addXp(h, each); }
@@ -624,7 +646,7 @@ class Game {
     while (h.level < CONFIG.MAX_LEVEL && h.xp >= xpToNext(h.level)) {
       h.xp -= xpToNext(h.level); h.level++; h.points++; h.recompute();
       this.fx('levelup', { target: h, dur: 1.2 });
-      if (h.isPlayer) { this.sfx('levelup'); if (h.level === 6) this.log('Niveau 6 : votre ultime est disponible', 'good'); }
+      if (this.watched(h)) { this.sfxFor(h, 'levelup'); if (h.level === 6) this.notify(h, 'Niveau 6 : votre ultime est disponible', 'good'); }
     }
     if (h.level >= CONFIG.MAX_LEVEL) h.xp = 0;
   }
@@ -646,20 +668,16 @@ class Game {
     for (const h of rec) this.addXp(h, rec.length > 1 ? xp * 1.3 / rec.length : xp);
     v.damagedBy.clear();
     this.fx('heroDeath', { x: v.x, y: v.y, dur: 1.4, team: v.team }); this.sfx('death', v.x, v.y);
-    if (this.ui) this.ui.feed(killer, v, assisters);
-    if (killer && !this.firstBlood) { this.firstBlood = true; this.announce('Premier sang', `${killer.name} élimine ${v.name}`, killer.team === 0 ? 'good' : 'bad'); }
-    else if (killer && killer.multi.n >= 2) this.announce(['', '', 'Double élimination', 'Triple élimination', 'Quadruple élimination', 'Pentakill'][Math.min(5, killer.multi.n)], killer.name, killer.team === 0 ? 'good' : 'bad');
-    else if (v.isPlayer) this.announce('Vous êtes à terre', killer ? `Éliminé par ${killer.name}` : 'Exécuté', 'bad');
-    else if (killer && killer.isPlayer) this.announce('Ennemi éliminé', v.name, 'good');
-    else if (v.team === 0) this.announce('Un allié est tombé', v.name, 'bad');
-    else this.announce('Ennemi éliminé', v.name, 'good');
+    this.feedKill(killer, v, assisters);
+    const fb = !!killer && !this.firstBlood; if (fb) this.firstBlood = true;
+    this.say('kill', { k: killer ? killer.id : 0, v: v.id, fb, multi: killer ? killer.multi.n : 0 });
   }
   respawn(h) {
     const f = MAP.fountains[h.team];
     h.dead = false; h.x = h.px = f.x + Utils.rand(-40, 40); h.y = h.py = f.y + Utils.rand(-40, 40);
     h.hp = h.maxHp; h.mana = h.maxMana; h.order = null; h.attackCd = 0;
     this.fx('teleport', { x: h.x, y: h.y, dur: 0.9, team: h.team });
-    if (h.isPlayer) this.sfx('respawn');
+    this.sfxFor(h, 'respawn');
   }
 
   // ---------- Sbires ----------
@@ -758,4 +776,32 @@ class Game {
       MAP.resolve(a);
     }
   }
+}
+
+// ---------- Annonces, rédigées du point de vue de chaque joueur ----------
+function heroLabel(h) { return h ? (h.nick ? `${h.nick} (${h.name})` : h.name) : ''; }
+function narrate(g, key, d, me) {
+  const my = me ? me.team : 0, ours = t => t === my, tone = t => ours(t) ? 'good' : 'bad', foe = TEAM_INFO[1 - my].name;
+  const H = id => g.heroes.find(h => h.id === id);
+  switch (key) {
+    case 'waves': return ['Les pillards arrivent', 'Les premières vagues partent sur les trois voies', 'info'];
+    case 'epic': return d.id === 'worm' ? ['Ver des sables', 'Le Ver des sables émerge dans la rivière', 'info'] : ['Titan de rouille', 'Le Titan de rouille s’est réveillé', 'info'];
+    case 'inhibBack': return ['Inhibiteur reconstruit', ours(d.team) ? 'Notre ' + LANE_NAMES[d.lane].toLowerCase() + ' est de nouveau protégée' : `Les ${foe} ont réparé leur inhibiteur`, 'info'];
+    case 'worm': return ['Ver des sables vaincu', `${TEAM_INFO[d.team].name} : +${d.n * 6} % de dégâts pour toute l’équipe`, tone(d.team)];
+    case 'titan': return ['Titan de rouille abattu', `${TEAM_INFO[d.team].name} reçoivent la Faveur du Titan`, tone(d.team)];
+    case 'buff': return BUFFS[d.id] ? [BUFFS[d.id].name, BUFFS[d.id].desc, 'good'] : null;
+    case 'tower': return [ours(d.team) ? 'Tourelle perdue' : 'Tourelle détruite', d.lane ? LANE_NAMES[d.lane] : 'Défense du réacteur', ours(d.team) ? 'bad' : 'good'];
+    case 'inhib': return [ours(d.team) ? 'Inhibiteur détruit' : 'Inhibiteur ennemi détruit', ours(d.team) ? 'Des mastodontes ennemis vont déferler' : 'Nos mastodontes vont déferler', ours(d.team) ? 'bad' : 'good'];
+    case 'end': return [ours(d.winner) ? 'Victoire' : 'Défaite', ours(d.winner) ? `Le réacteur des ${foe} a sauté` : 'Notre réacteur a sauté', tone(d.winner)];
+    case 'kill': {
+      const k = H(d.k), v = H(d.v); if (!v) return null;
+      if (k && d.fb) return ['Premier sang', `${heroLabel(k)} élimine ${heroLabel(v)}`, tone(k.team)];
+      if (k && d.multi >= 2) return [['', '', 'Double élimination', 'Triple élimination', 'Quadruple élimination', 'Pentakill'][Math.min(5, d.multi)], heroLabel(k), tone(k.team)];
+      if (v === me) return ['Vous êtes à terre', k ? `Éliminé par ${heroLabel(k)}` : 'Exécuté', 'bad'];
+      if (k && k === me) return ['Ennemi éliminé', heroLabel(v), 'good'];
+      if (ours(v.team)) return ['Un allié est tombé', heroLabel(v), 'bad'];
+      return ['Ennemi éliminé', heroLabel(v), 'good'];
+    }
+  }
+  return null;
 }

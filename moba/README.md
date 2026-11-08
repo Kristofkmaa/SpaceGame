@@ -1,6 +1,6 @@
 # Terres Brûlées
 
-MOBA 5 contre 5 en 3D dans les ruines de l’ancien monde, jouable dans le navigateur.
+MOBA 5 contre 5 en 3D dans les ruines de l’ancien monde, jouable dans le navigateur, seul contre des bots ou en ligne avec vos amis.
 JavaScript pur, sans outil de build. Le rendu 3D utilise Three.js (r128), fourni dans `vendor/`, donc aucun accès réseau n’est nécessaire.
 
 ## Lancer le jeu
@@ -12,6 +12,28 @@ python3 -m http.server 8000
 ```
 
 puis rendez-vous sur <http://localhost:8000/moba/>.
+
+## Multijoueur
+
+Jusqu’à dix joueurs, en coopération ou les uns contre les autres. Les places libres sont tenues par des bots.
+
+1. **Multijoueur** dans le menu, choisissez un pseudo.
+2. L’un de vous **crée un salon** : son navigateur fera tourner la partie. Il doit garder l’onglet ouvert.
+3. Les autres le voient dans la liste des salons ouverts, ou entrent son **code**.
+4. Chacun clique sur une place (équipe et poste) et choisit son héros. L’hôte règle le niveau des bots et **lance la partie**.
+
+Deux façons de se retrouver :
+
+- **Depuis la page Claude du jeu.** Le salon passe par la page elle‑même. Il suffit que vos amis aient accès à la page, avec au moins le droit de **contribuer** : en simple lecture, on peut voir les salons mais pas jouer.
+- **Avec le serveur fourni**, en réseau local ou sur un serveur en ligne :
+
+  ```bash
+  node moba/server.js
+  ```
+
+  Ouvrez l’adresse affichée (par exemple `http://192.168.1.20:8080`) sur chaque ordinateur. Aucune dépendance : Node 16 ou plus récent suffit. Option `--port` pour changer de port.
+
+Fonctionnement : l’hôte simule la partie et envoie un instantané compact environ dix fois par seconde. Les autres joueurs envoient seulement leurs ordres et affichent la partie avec un léger différé, pour des mouvements fluides. Si un joueur quitte, un bot reprend son héros. Si l’hôte quitte, la partie s’arrête.
 
 ## La partie
 
@@ -108,15 +130,17 @@ js/icons.js         Icônes des compétences, sorts et objets
 js/audio.js         Son synthétisé (WebAudio)
 js/bot.js           IA par rôle : laning, jungle, ganks, objectifs, achats
 js/game.js          Simulation : vagues, jungle, combat, vision, or, niveaux
+js/net.js           Multijoueur : salon, hôte, client, instantanés compacts
 js/render3d.js      Rendu 3D, brouillard, indicateurs, barres, minimap
 js/input.js         Souris, clavier, caméra
 js/ui.js            HUD, boutique à recettes, tableau des scores
 js/menu.js          Menu, sélection, versus, guide, options, fin
 js/main.js          Assemblage et boucle
+server.js           Serveur facultatif : fichiers du jeu et relais WebSocket
 ```
 
 ## Pistes pour la suite
 
 - Buissons
 - Plus de héros, et des objets à effets actifs
-- Multijoueur
+- Reconnexion en cours de partie

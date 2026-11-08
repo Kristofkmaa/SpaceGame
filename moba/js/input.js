@@ -56,8 +56,8 @@ class Input {
   rightClick(first) {
     const g = this.game, h = g.player; if (h.dead) return;
     const u = this.hoverTarget();
-    if (u) g.issueAttack(h, u);
-    else { g.issueMove(h, this.mouse.wx, this.mouse.wy); if (first) this.lastMoveT = g.time; }
+    if (u) this.app.act('attack', u);
+    else { this.app.act('move', this.mouse.wx, this.mouse.wy); if (first) this.lastMoveT = g.time; }
     this.lastRight = performance.now();
   }
   move(e) {
@@ -68,10 +68,10 @@ class Input {
     if (!this.active()) return;
     const g = this.game, r = this.minimap.getBoundingClientRect();
     const wx = (e.clientX - r.left) / r.width * CONFIG.W, wy = (e.clientY - r.top) / r.height * CONFIG.H;
-    if (e.button === 2 || right) { g.issueMove(g.player, wx, wy); this.lastMoveT = g.time; return; }
+    if (e.button === 2 || right) { this.app.act('move', wx, wy); this.lastMoveT = g.time; return; }
     g.camera.locked = false; g.camera.x = wx; g.camera.y = wy;
   }
-  castAim() { const a = this.aiming; this.aiming = null; if (!a || !this.game) return; this.game.castAbility(this.game.player, a.slot, this.mouse.wx, this.mouse.wy); }
+  castAim() { const a = this.aiming; this.aiming = null; if (!a || !this.game) return; this.app.act('cast', a.slot, this.mouse.wx, this.mouse.wy); }
   keyDown(e) {
     const g = this.game, key = KeyBindings.norm(e), action = this.K.actionFor(key);
     if (g && g.state === 'playing' && !this.app.menu.isOpen() && (key === 'Tab' || key === ' ' || e.key.startsWith('Arrow'))) e.preventDefault();
@@ -86,21 +86,21 @@ class Input {
     }
     if (!this.active()) return;
     const h = g.player;
-    if (/^[1-6]$/.test(key) && !action) { g.useItem(h, +key - 1); return; }
+    if (/^[1-6]$/.test(key) && !action) { this.app.act('item', +key - 1); return; }
     if (action && action.startsWith('ab')) {
       const slot = +action[2];
-      if (e.ctrlKey || e.metaKey) { e.preventDefault(); if (!g.levelUp(h, slot)) g.castFail(h, h.points ? 'Rang maximal pour ce niveau' : 'Aucun point de compétence disponible'); return; }
+      if (e.ctrlKey || e.metaKey) { e.preventDefault(); this.app.act('level', slot); return; }
       if (this.aiming) this.castAim();
       const ab = ABILITIES[h.def.abilities[slot]];
-      if (ab.aim === 'self' && !h.dead) { g.castAbility(h, slot, this.mouse.wx, this.mouse.wy); return; }
+      if (ab.aim === 'self' && !h.dead) { this.app.act('cast', slot, this.mouse.wx, this.mouse.wy); return; }
       this.aiming = { slot, key }; return;
     }
     switch (action) {
-      case 'sp0': g.useSpell(h, 0, this.mouse.wx, this.mouse.wy); break;
-      case 'sp1': g.useSpell(h, 1, this.mouse.wx, this.mouse.wy); break;
-      case 'recall': g.startRecall(h); break;
+      case 'sp0': this.app.act('spell', 0, this.mouse.wx, this.mouse.wy); break;
+      case 'sp1': this.app.act('spell', 1, this.mouse.wx, this.mouse.wy); break;
+      case 'recall': this.app.act('recall'); break;
       case 'shop': this.app.ui.toggleShop(); break;
-      case 'stop': g.issueStop(h); break;
+      case 'stop': this.app.act('stop'); break;
       case 'scoreboard': this.app.ui.showScore(true); break;
       case 'camLock': g.camera.locked = !g.camera.locked; g.log(g.camera.locked ? 'Caméra verrouillée sur votre héros' : 'Caméra libre', 'info'); break;
       case 'camCenter': this.centerHeld = true; break;

@@ -283,3 +283,56 @@ input[type=range] { width: 240px; accent-color: var(--brass); }
 #endText { text-align: center; color: var(--dim); font-size: 18px; margin: 0 0 14px; }
 #endStats { display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 1300px) { #statPanel { display: none; } #heroInfo { width: 40vw; } #stage { width: 28vw; } #shop { width: 96vw; } }
+
+/* ---------- Multijoueur ---------- */
+.btn.small { padding: 5px 14px; font-size: 13px; }
+.btn.off { opacity: 0.4; pointer-events: none; }
+input.txt { background: #0c0906; border: 1px solid var(--brass-lo); color: var(--ink); font-family: var(--font); font-size: 17px; padding: 7px 10px; width: 240px; outline: none; user-select: text; }
+input.txt:focus { border-color: var(--brass-hi); }
+.mpStatus { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin: 2px 12px 8px 0; line-height: 1.4; }
+.mpStatus i { width: 9px; height: 9px; border-radius: 50%; background: var(--brass); flex: none; animation: mpPulse 1.2s infinite; }
+.mpStatus.ready i { background: var(--ok); animation: none; } .mpStatus.none i { background: var(--red); animation: none; }
+.mpStatus code { color: var(--brass-hi); font-family: ui-monospace, monospace; font-size: 13px; background: #0c0906; padding: 1px 5px; }
+@keyframes mpPulse { 50% { opacity: 0.3; } }
+.mpCols { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; margin-top: 16px; }
+.mpCol h3 { font-family: var(--display); font-size: 24px; text-transform: uppercase; margin: 0 0 8px; color: var(--brass-hi); letter-spacing: 0.04em; }
+.mpCol p { color: var(--dim); font-size: 16px; line-height: 1.45; margin: 0 0 16px; }
+#mpList { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; margin-bottom: 12px; }
+#mpList .empty { color: var(--faint); font-size: 15px; padding: 10px 0; }
+.mpGame { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; padding: 8px 10px; background: rgba(255,220,160,0.03); border: 1px solid var(--edge); }
+.mpGame b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpGame .code { font-family: ui-monospace, monospace; color: var(--brass-hi); letter-spacing: 0.1em; }
+.mpGame .n { color: var(--dim); font-size: 14px; } .mpGame.started { opacity: 0.6; }
+.mpCodeRow { display: flex; gap: 8px; } .mpCodeRow input { width: 170px; text-transform: uppercase; letter-spacing: 0.12em; }
+.pauseNote { color: var(--brass-hi); font-size: 15px; margin: -4px 0 12px; }
+.lobHead { position: absolute; left: 3vw; top: 3.5vh; right: 3vw; }
+.lobTitle { font-family: var(--display); font-size: 40px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 14px; }
+.lobTitle b { color: var(--brass-hi); letter-spacing: 0.12em; font-family: ui-monospace, 'Courier New', monospace; font-size: 34px; }
+#lobWho { color: var(--dim); font-size: 16px; margin-top: 2px; }
+.lobTeams { position: absolute; left: 3vw; top: 17vh; bottom: 15vh; width: 58vw; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.lobTeam { display: flex; flex-direction: column; gap: 8px; }
+.lobTeam .th { font-family: var(--display); font-size: 26px; font-weight: 800; text-transform: uppercase; padding-bottom: 4px; border-bottom: 2px solid; }
+.lobTeam.blue .th { color: var(--blue); border-color: var(--blue); } .lobTeam.red .th { color: var(--red); border-color: var(--red); }
+.ls { display: grid; grid-template-columns: 96px 54px 1fr; align-items: center; gap: 12px; padding: 6px 10px; min-height: 66px; background: rgba(18,13,9,0.85); border: 1px solid var(--edge); cursor: pointer; }
+.ls:hover { border-color: var(--brass-lo); } .ls.taken { cursor: default; background: rgba(36,26,18,0.92); } .ls.me { border-color: var(--brass-hi); box-shadow: inset 0 0 0 1px var(--brass-hi); cursor: pointer; }
+.ls .rl { font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.ls .pp canvas { width: 50px; height: 50px; display: block; border-radius: 50%; border: 2px solid var(--brass-lo); }
+.lobTeam.red .ls .pp canvas { border-color: #7a2014; } .lobTeam.blue .ls .pp canvas { border-color: #164f6a; }
+.ls .who b { display: block; font-size: 19px; font-weight: 600; } .ls .who small { color: var(--dim); font-size: 14px; }
+.ls:not(.taken) .who small { color: var(--faint); }
+.lobSide { position: absolute; right: 3vw; top: 17vh; width: 32vw; }
+#lobHeroes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }
+.lh { position: relative; cursor: pointer; border: 2px solid #0a0705; box-shadow: 0 0 0 1px var(--brass-lo); background: #1a120c; }
+.lh canvas { width: 100%; display: block; aspect-ratio: 1; }
+.lh span { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; background: linear-gradient(transparent, rgba(0,0,0,0.85)); text-align: center; }
+.lh:hover { box-shadow: 0 0 0 1px var(--brass-hi); } .lh.sel { box-shadow: 0 0 0 2px var(--brass-hi), 0 0 16px rgba(240,200,120,0.45); }
+.lh.taken { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
+#lobWait { margin-top: 12px; color: var(--dim); font-size: 15px; }
+#lobCount { color: var(--dim); font-size: 15px; }
+#lobDiff a.off { pointer-events: none; opacity: 0.55; } #lobDiff a.off.on { opacity: 1; }
+.lobWaitHost { color: var(--brass-hi); font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; }
+#netInfo { font-size: 13px; color: var(--dim); text-align: right; padding: 2px 4px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+#netInfo i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); } #netInfo i.mid { background: var(--brass-hi); } #netInfo i.bad { background: var(--red); }
+.sbTeam em.nick { color: var(--brass-hi); font-style: normal; }
+.af .nm em { font-style: normal; color: var(--brass-hi); }
+@media (max-width: 1100px) { .lobTeams { width: 94vw; bottom: auto; } .lobSide { display: none; } .mpCols { grid-template-columns: 1fr; } }

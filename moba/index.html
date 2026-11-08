@@ -19,6 +19,7 @@
         <div class="teams"><span class="b" id="killsBlue">0</span><span class="vs">⚔</span><span class="r" id="killsRed">0</span></div>
         <div class="me"><span data-tip="<b>Éliminations / Morts / Assistances</b>"><i class="ico k"></i><b id="kda">0 / 0 / 0</b></span><span data-tip="<b>Sbires et monstres achevés</b>"><i class="ico cs"></i><b id="cs">0</b></span><span><i class="ico clk"></i><b id="clock">00:00</b></span></div>
       </div>
+      <div id="netInfo" class="hidden"></div>
       <div id="feed"></div>
     </div>
     <div id="objectives"></div>
@@ -61,6 +62,7 @@
       </div>
       <nav class="mainNav">
         <a data-go="select"><span>Jouer</span><small>Partie contre l’IA</small></a>
+        <a data-go="multi"><span>Multijoueur</span><small>Avec vos amis, en ligne</small></a>
         <a data-go="howto"><span>Comment jouer</span><small>Voies, jungle, objets</small></a>
         <a data-go="options"><span>Options</span><small>Son, caméra, touches</small></a>
       </nav>
@@ -83,6 +85,44 @@
 
     <div id="screenVersus" class="screen hidden"><div id="versus"></div></div>
 
+    <div id="screenMulti" class="screen hidden dim">
+      <div class="panel wide">
+        <div class="panelTitle">Multijoueur</div>
+        <div id="mpStatus" class="mpStatus"></div><a class="btn small ghost hidden" id="mpRetry">Réessayer</a>
+        <div class="setting"><span class="lbl">Votre pseudo</span><input id="mpNick" class="txt" maxlength="16" placeholder="Survivant" autocomplete="off" spellcheck="false"></div>
+        <div class="mpCols">
+          <div class="mpCol">
+            <h3>Héberger</h3>
+            <p>Créez un salon, choisissez votre place et lancez quand vos amis sont prêts. Votre navigateur fait tourner la partie : les places vides sont tenues par des bots.</p>
+            <a class="btn primary" id="mpHost">Créer un salon</a>
+          </div>
+          <div class="mpCol">
+            <h3>Rejoindre</h3>
+            <div id="mpList"></div>
+            <div class="mpCodeRow"><input id="mpCode" class="txt" maxlength="8" placeholder="Code du salon" autocomplete="off" spellcheck="false"><a class="btn" id="mpJoin">Rejoindre</a></div>
+          </div>
+        </div>
+        <div class="actions"><a class="btn ghost" data-go="main">Retour</a></div>
+      </div>
+    </div>
+
+    <div id="screenLobby" class="screen hidden">
+      <div class="selShade"></div>
+      <div class="lobHead">
+        <div class="kicker">Salon en ligne</div>
+        <div class="lobTitle">Code <b id="lobCode"></b> <a class="btn small ghost" id="lobCopy">Copier</a></div>
+        <div id="lobWho"></div>
+      </div>
+      <div class="lobTeams"><div class="lobTeam blue" id="lobBlue"></div><div class="lobTeam red" id="lobRed"></div></div>
+      <div class="lobSide"><div class="lbl">Votre héros</div><div id="lobHeroes"></div><div id="lobWait"></div></div>
+      <div class="selFoot">
+        <a class="btn ghost" id="lobLeave">Quitter le salon</a>
+        <div class="pickBox"><span class="lbl">Bots</span><div class="seg" id="lobDiff"></div><span id="lobCount"></span></div>
+        <span id="lobWaitHost" class="lobWaitHost">L’hôte lancera la partie</span>
+        <a class="btn primary" id="lobStart">Lancer la partie</a>
+      </div>
+    </div>
+
     <div id="screenHowto" class="screen hidden dim">
       <div class="panel xwide"><div class="panelTitle">Comment jouer</div><div id="howtoBody"></div><div class="actions"><a class="btn ghost" data-go="back">Retour</a></div></div>
     </div>
@@ -103,7 +143,7 @@
     </div>
 
     <div id="screenPause" class="screen hidden dim">
-      <div class="panel narrow"><div class="panelTitle">Pause</div>
+      <div class="panel narrow"><div class="panelTitle">Pause</div><p id="pauseNote" class="pauseNote hidden">Partie en ligne : le jeu continue pendant que ce menu est ouvert.</p>
         <nav class="mainNav small"><a id="btnResume"><span>Reprendre</span></a><a data-go="howto"><span>Comment jouer</span></a><a data-go="options"><span>Options</span></a><a id="btnQuit"><span>Abandonner</span></a></nav>
       </div>
     </div>
@@ -128,6 +168,7 @@
   <script src="js/audio.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/net.js"></script>
   <script src="js/render3d.js"></script>
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>

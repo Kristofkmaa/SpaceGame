@@ -473,11 +473,11 @@ class Renderer3D {
       ctx.fillStyle = col; ctx.fillRect(x, y, width * Math.max(0, u.hp / u.maxHp), hh);
       return { x, y };
     };
-    for (const m of g.minions) if (m.team === team || m.vis[team]) bar(m, m.def.super ? 40 : 30, 4, m.team === team ? TEAM_INFO[0].bar : TEAM_INFO[1].bar, 0.8);
+    for (const m of g.minions) if (m.team === team || m.vis[team]) bar(m, m.def.super ? 40 : 30, 4, TEAM_INFO[m.team].bar, 0.8);
     for (const m of g.monsters) if (m.vis[team] && (m.hp < m.maxHp || input.hover === m)) bar(m, m.def.epic ? 120 : 52, m.def.epic ? 7 : 5, '#d8b860', 1);
     for (const s of g.structures()) {
       if (s.dead) continue;
-      const b = bar(s, s.kind === 'nexus' ? 140 : 100, 7, s.team === team ? TEAM_INFO[0].bar : TEAM_INFO[1].bar, 2);
+      const b = bar(s, s.kind === 'nexus' ? 140 : 100, 7, TEAM_INFO[s.team].bar, 2);
       if (b && !g.isTargetable(s, 1 - s.team)) { ctx.fillStyle = '#e8dcc4'; ctx.fillRect(b.x - 16, b.y - 2, 10, 9); ctx.strokeStyle = '#e8dcc4'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(b.x - 11, b.y - 2, 3.5, Math.PI, 0); ctx.stroke(); }
     }
     for (const h of g.heroes) {
@@ -485,7 +485,7 @@ class Renderer3D {
       const p = this.toScreen(h.x, h.y, this.unitHeight(h) + 2.2 + (h.z || 0) * S3);
       if (p.behind) continue;
       const bw = 92, x = Math.round(p.x - bw / 2 + 9), y = Math.round(p.y);
-      const col = h.isPlayer ? '#7fd96a' : h.team === team ? '#3aa6dd' : '#de3f2a';
+      const col = h.isPlayer ? '#7fd96a' : TEAM_INFO[h.team].bar;
       ctx.fillStyle = 'rgba(10,8,6,0.88)'; ctx.fillRect(x - 21, y - 3, bw + 23, 17);
       ctx.strokeStyle = 'rgba(201,154,74,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(x - 21.5, y - 3.5, bw + 24, 18);
       ctx.fillStyle = '#20180f'; ctx.fillRect(x - 19, y - 1, 16, 13);
@@ -495,7 +495,7 @@ class Renderer3D {
       const sh = h.shieldAmt(g.time); if (sh > 0) { ctx.fillStyle = '#e8e8e0'; ctx.fillRect(x + bw * h.hp / h.maxHp, y - 1, Math.min(bw * sh / h.maxHp, bw * (1 - h.hp / h.maxHp)), 9); }
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; for (let k = 100; k < h.maxHp; k += 100) ctx.fillRect(x + bw * k / h.maxHp, y - 1, 1, k % 1000 ? 4 : 9);
       ctx.fillStyle = '#3e7ad8'; ctx.fillRect(x, y + 9, bw * h.mana / h.maxMana, 3);
-      ctx.font = "600 12px 'Barlow Condensed', sans-serif"; ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillText(h.name, p.x + 1, y - 6); ctx.fillStyle = h.isPlayer ? '#ffd76a' : '#f0e2c4'; ctx.fillText(h.name, p.x, y - 7);
+      ctx.font = "600 12px 'Barlow Condensed', sans-serif"; ctx.fillStyle = 'rgba(0,0,0,0.7)'; const label = h.nick || h.name; ctx.fillText(label, p.x + 1, y - 6); ctx.fillStyle = h.isPlayer ? '#ffd76a' : h.nick ? '#ffe9b8' : '#f0e2c4'; ctx.fillText(label, p.x, y - 7);
       if (h.recall) { const k = (g.time - h.recall.start) / CONFIG.RECALL_TIME; ctx.fillStyle = TEAM_INFO[h.team].light; ctx.fillRect(x, y + 14, bw * k, 3); }
     }
     if (this.settings.damageNumbers) for (const f of g.floats) {
@@ -513,15 +513,15 @@ class Renderer3D {
     ctx.drawImage(this.miniBg, 0, 0);
     ctx.drawImage(this.fogCanvas, 0, 0, W, W);
     for (const c of g.camps) { if (!c.alive.length) continue; if (!c.alive.some(m => m.vis[team]) && !c.epic) { ctx.fillStyle = 'rgba(216,184,96,0.5)'; ctx.beginPath(); ctx.arc(c.x * k, c.y * k, 2.5, 0, Math.PI * 2); ctx.fill(); continue; } ctx.fillStyle = c.epic ? '#ffb030' : '#d8b860'; ctx.beginPath(); ctx.arc(c.x * k, c.y * k, c.epic ? 5 : 3.5, 0, Math.PI * 2); ctx.fill(); }
-    for (const s of g.structures()) { if (s.dead) continue; ctx.fillStyle = s.team === team ? TEAM_INFO[0].color : TEAM_INFO[1].color; const r = s.kind === 'nexus' ? 9 : s.kind === 'inhib' ? 6 : 6; ctx.fillRect(s.x * k - r / 2, s.y * k - r / 2, r, r); ctx.strokeStyle = '#100b07'; ctx.lineWidth = 1; ctx.strokeRect(s.x * k - r / 2, s.y * k - r / 2, r, r); }
-    for (const m of g.minions) { if (m.team !== team && !m.vis[team]) continue; ctx.fillStyle = m.team === team ? TEAM_INFO[0].light : TEAM_INFO[1].light; ctx.fillRect(m.x * k - 1, m.y * k - 1, 2, 2); }
+    for (const s of g.structures()) { if (s.dead) continue; ctx.fillStyle = TEAM_INFO[s.team].color; const r = s.kind === 'nexus' ? 9 : s.kind === 'inhib' ? 6 : 6; ctx.fillRect(s.x * k - r / 2, s.y * k - r / 2, r, r); ctx.strokeStyle = '#100b07'; ctx.lineWidth = 1; ctx.strokeRect(s.x * k - r / 2, s.y * k - r / 2, r, r); }
+    for (const m of g.minions) { if (m.team !== team && !m.vis[team]) continue; ctx.fillStyle = TEAM_INFO[m.team].light; ctx.fillRect(m.x * k - 1, m.y * k - 1, 2, 2); }
     for (const h of g.heroes) {
       if (h.dead || (h.team !== team && !h.vis[team])) continue;
       const x = h.x * k, y = h.y * k, r = 8;
       ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
       if (portraits && portraits[h.heroId]) ctx.drawImage(portraits[h.heroId], x - r, y - r, r * 2, r * 2); else { ctx.fillStyle = '#444'; ctx.fill(); }
       ctx.restore();
-      ctx.strokeStyle = h.isPlayer ? '#ffd34d' : h.team === team ? TEAM_INFO[0].color : TEAM_INFO[1].color; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = h.isPlayer ? '#ffd34d' : TEAM_INFO[h.team].color; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
     }
     // Cadre de la caméra
     const c = [this.toWorld(0, 0), this.toWorld(window.innerWidth, 0), this.toWorld(window.innerWidth, window.innerHeight), this.toWorld(0, window.innerHeight)];
